@@ -3,31 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Interativo de Impressoras com Tooltip</title>
+    <title>Mapa Interativo de Impressoras (UI Melhorada)</title>
+    <!-- Substitua o href abaixo pelo caminho para o seu favicon -->
+     <link rel="shortcut icon" href="pardinilogo.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .printer-point {
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            border-radius: 9999px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transform: translate(-50%, -50%);
+            position: absolute; width: 24px; height: 24px; border-radius: 9999px;
+            cursor: pointer; transition: all 0.3s ease; display: flex;
+            align-items: center; justify-content: center; transform: translate(-50%, -50%);
         }
         .printer-point::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 9999px;
-            animation: pulse 2s infinite;
-            background-color: currentColor;
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border-radius: 9999px; animation: pulse 2s infinite; background-color: currentColor;
         }
         .printer-point:hover { transform: translate(-50%, -50%) scale(1.2); }
         .printer-point-icon { width: 14px; height: 14px; color: white; z-index: 10; }
@@ -56,83 +46,59 @@
         }
         .toast.show { opacity: 1; transform: translateY(0); }
         #map-tooltip {
-            position: absolute;
-            background-color: #3D405B;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            line-height: 1.4;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s, visibility 0.2s;
-            pointer-events: none;
-            z-index: 60;
-            transform: translate(-50%, -125%);
-            white-space: nowrap;
+            position: absolute; background-color: #3D405B; color: white;
+            padding: 8px 12px; border-radius: 6px; font-size: 0.875rem;
+            line-height: 1.4; opacity: 0; visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s; pointer-events: none;
+            z-index: 60; transform: translate(-50%, -125%); white-space: nowrap;
         }
         #map-tooltip.show { opacity: 1; visibility: visible; }
+        #search-input {
+            width: 0;
+            padding-left: 0;
+            padding-right: 0;
+            opacity: 0;
+            transition: all 0.4s ease-in-out;
+        }
+        #search-container.expanded #search-input {
+            width: 250px;
+            opacity: 1;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
     </style>
-    <!-- Chosen Palette: "Warm Neutrals" (Beige, Slate, with a subtle accent color like Teal) -->
-    <!-- Application Structure Plan: This version enhances the UI by adding an on-hover tooltip feature. The core structure (map-centric dashboard with search and CRUD) remains. The tooltip provides immediate, non-intrusive information, improving workflow efficiency by reducing the need to click for basic details. -->
-    <!-- Visualization & Content Choices: Report Info: Printer details. Goal: Quickly identify printers on hover. Viz/Presentation: A CSS-styled tooltip that appears on mouseover. Interaction: Hovering over a printer point reveals a tooltip with its Name, SELB, and IP. Justification: Tooltips are a standard and highly effective UI pattern for providing contextual information without cluttering the interface or requiring user action, making the map faster to scan and use. Library/Method: Vanilla JS for event listeners (mouseenter, mouseleave) and DOM manipulation to show/hide and position the tooltip. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 </head>
 <body class="bg-[#F3F0EC] text-[#3D405B]">
+    <div id="side-actions" class="fixed top-4 right-4 z-30 flex flex-col gap-3">
+        <div id="search-container" class="relative flex items-center justify-end bg-white rounded-full shadow-md">
+            <form id="search-form" class="flex items-center">
+                <input type="text" id="search-input" placeholder="Buscar por Nome ou SELB..." class="h-12 border-none rounded-full focus:ring-0">
+                <button type="button" id="search-icon-btn" class="w-12 h-12 flex items-center justify-center text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+            </form>
+        </div>
+        <button id="add-printer-btn" class="w-12 h-12 flex items-center justify-center bg-[#81B29A] text-white font-semibold rounded-full shadow-md hover:bg-[#6a947e] transition-all duration-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </button>
+    </div>
+
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-6">
-            <h1 class="text-3xl md:text-4xl font-bold text-[#3D405B]">Mapa Interativo de Impressoras</h1>
-            <p class="text-md text-[#81879c] mt-2">Passe o mouse para um resumo, clique para detalhes, ou busque por nome/SELB.</p>
-            <div class="mt-4 max-w-lg mx-auto flex gap-4">
-                <form id="search-form" class="flex-grow">
-                    <input type="text" id="search-input" placeholder="Buscar por Nome ou SELB..." class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#81B29A] focus:outline-none transition">
-                </form>
-                <button id="add-printer-btn" class="px-6 py-2 bg-[#81B29A] text-white font-semibold rounded-lg hover:bg-[#6a947e] transition-colors whitespace-nowrap">
-                    Adicionar
-                </button>
-            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-[#3D405B]">Mapeamento Termicas Nto</h1>
         </header>
 
         <main>
             <div id="map-container" class="relative w-full max-w-6xl mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-all duration-300" style="aspect-ratio: 1.58;">
-                <img  src="planta.jpg" alt="Planta do escritório" class="w-full h-full object-cover">
+                <img src="planta.jpeg" alt="Planta do escritório" class="w-full h-full object-cover">
                 <div id="map-tooltip"></div>
             </div>
         </main>
     </div>
 
     <!-- Modals -->
-    <div id="details-modal" class="modal-backdrop hidden">
-        <div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative">
-            <button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            <h2 id="modal-title" class="text-2xl font-bold text-[#3D405B] mb-4"></h2>
-            <div class="space-y-3 text-gray-700">
-                <p><strong>ID:</strong> <span id="modal-id"></span></p>
-                <p><strong>Departamento:</strong> <span id="modal-department"></span></p>
-                <p><strong>SELB:</strong> <span id="modal-selb" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p>
-                <p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p>
-                <p><strong>Estado:</strong> <span id="modal-status"></span></p>
-            </div>
-            <div class="mt-6 flex space-x-4">
-                <a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white font-bold rounded-lg hover:bg-[#d46a50] transition-colors">Aceder</a>
-                <button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Remover</button>
-            </div>
-        </div>
-    </div>
-    <div id="add-modal" class="modal-backdrop hidden">
-        <div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative">
-             <button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            <h2 class="text-2xl font-bold text-[#3D405B] mb-4">Adicionar Nova Impressora</h2>
-            <form id="add-printer-form" class="space-y-4">
-                <input type="text" name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-2 border rounded">
-                <input type="text" name="department" placeholder="Departamento" required class="w-full p-2 border rounded">
-                <input type="text" name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-2 border rounded">
-                <input type="text" name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-2 border rounded">
-                <select name="status" required class="w-full p-2 border rounded bg-white"><option value="Online">Online</option><option value="Manutenção">Manutenção</option><option value="Offline">Offline</option></select>
-                <button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white font-bold rounded-lg hover:bg-[#2c2e40] transition-colors">Salvar Impressora</button>
-            </form>
-        </div>
-    </div>
+    <div id="details-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 id="modal-title" class="text-2xl font-bold text-[#3D405B] mb-4"></h2><div class="space-y-3 text-gray-700"><p><strong>ID:</strong> <span id="modal-id"></span></p><p><strong>Departamento:</strong> <span id="modal-department"></span></p><p><strong>SELB:</strong> <span id="modal-selb" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Estado:</strong> <span id="modal-status"></span></p></div><div class="mt-6 flex space-x-4"><a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white font-bold rounded-lg hover:bg-[#d46a50] transition-colors">Aceder</a><button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Remover</button></div></div></div>
+    <div id="add-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 class="text-2xl font-bold text-[#3D405B] mb-4">Adicionar Nova Impressora</h2><form id="add-printer-form" class="space-y-4"><input type="text" name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-2 border rounded"><input type="text" name="department" placeholder="Departamento" required class="w-full p-2 border rounded"><input type="text" name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-2 border rounded"><input type="text" name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-2 border rounded"><select name="status" required class="w-full p-2 border rounded bg-white"><option value="Online">Online</option><option value="Manutenção">Manutenção</option><option value="Offline">Offline</option></select><button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white font-bold rounded-lg hover:bg-[#2c2e40] transition-colors">Salvar Impressora</button></form></div></div>
     <div id="toast-notification" class="toast"></div>
 
     <script>
@@ -140,6 +106,8 @@
             const mapContainer = document.getElementById('map-container');
             const tooltip = document.getElementById('map-tooltip');
             const addPrinterBtn = document.getElementById('add-printer-btn');
+            const searchContainer = document.getElementById('search-container');
+            const searchIconBtn = document.getElementById('search-icon-btn');
             const searchForm = document.getElementById('search-form');
             const searchInput = document.getElementById('search-input');
             const detailsModal = document.getElementById('details-modal');
@@ -165,10 +133,7 @@
                 setTimeout(() => { toast.classList.remove('show'); }, 3000);
             }
 
-            function savePrinters() {
-                localStorage.setItem('interactiveMapPrinters', JSON.stringify(printerData));
-            }
-
+            function savePrinters() { localStorage.setItem('interactiveMapPrinters', JSON.stringify(printerData)); }
             function loadPrinters() {
                 const savedPrinters = localStorage.getItem('interactiveMapPrinters');
                 printerData = savedPrinters ? JSON.parse(savedPrinters) : initialPrinters;
@@ -195,23 +160,15 @@
                 point.style.top = printer.pos.top;
                 point.style.left = printer.pos.left;
                 point.dataset.printerId = printer.id;
-                
-                const icon = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>`;
-                point.innerHTML = icon;
-
+                point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>`;
                 point.addEventListener('click', () => showDetailsModal(printer));
-                
                 point.addEventListener('mouseenter', () => {
                     tooltip.innerHTML = `<strong>${printer.name}</strong><br>SELB: ${printer.selb}<br>IP: ${printer.ip}`;
                     tooltip.style.top = point.style.top;
                     tooltip.style.left = point.style.left;
                     tooltip.classList.add('show');
                 });
-
-                point.addEventListener('mouseleave', () => {
-                    tooltip.classList.remove('show');
-                });
-
+                point.addEventListener('mouseleave', () => { tooltip.classList.remove('show'); });
                 mapContainer.appendChild(point);
             }
 
@@ -221,7 +178,6 @@
                 document.getElementById('modal-department').textContent = printer.department;
                 document.getElementById('modal-selb').textContent = printer.selb;
                 document.getElementById('modal-ip').textContent = printer.ip;
-                
                 const statusSpan = document.createElement('span');
                 statusSpan.textContent = printer.status;
                 let statusColorClass = '';
@@ -233,7 +189,6 @@
                 statusSpan.className = `font-semibold ${statusColorClass}`;
                 document.getElementById('modal-status').innerHTML = '';
                 document.getElementById('modal-status').appendChild(statusSpan);
-
                 document.getElementById('modal-link').href = `http://${printer.ip}`;
                 printerToDeleteId = printer.id;
                 detailsModal.classList.remove('hidden');
@@ -242,13 +197,11 @@
             function toggleAddMode() {
                 isAddMode = !isAddMode;
                 if (isAddMode) {
-                    addPrinterBtn.textContent = 'Cancelar';
                     addPrinterBtn.classList.replace('bg-[#81B29A]', 'bg-yellow-500');
                     addPrinterBtn.classList.replace('hover:bg-[#6a947e]', 'hover:bg-yellow-600');
                     mapContainer.classList.add('add-mode', 'border-yellow-500');
                     showToast('Clique no mapa para posicionar a nova impressora.');
                 } else {
-                    addPrinterBtn.textContent = 'Adicionar';
                     addPrinterBtn.classList.replace('bg-yellow-500', 'bg-[#81B29A]');
                     addPrinterBtn.classList.replace('hover:bg-yellow-600', 'hover:bg-[#6a947e]');
                     mapContainer.classList.remove('add-mode', 'border-yellow-500');
@@ -256,7 +209,7 @@
             }
 
             mapContainer.addEventListener('click', (event) => {
-                if (!isAddMode || event.target.classList.contains('printer-point')) return;
+                if (!isAddMode || event.target.closest('.printer-point')) return;
                 const rect = mapContainer.getBoundingClientRect();
                 newPrinterCoords = {
                     top: `${((event.clientY - rect.top) / rect.height) * 100}%`,
@@ -281,6 +234,19 @@
                 showToast('Impressora adicionada com sucesso!');
             });
             
+            searchIconBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isExpanded = searchContainer.classList.contains('expanded');
+                if (isExpanded && searchInput.value) {
+                    searchForm.requestSubmit();
+                } else {
+                    searchContainer.classList.toggle('expanded');
+                    if (searchContainer.classList.contains('expanded')) {
+                        searchInput.focus();
+                    }
+                }
+            });
+
             searchForm.addEventListener('submit', (event) => {
                 event.preventDefault();
                 const searchTerm = searchInput.value.toLowerCase().trim();
@@ -313,9 +279,14 @@
                     addModal.classList.add('hidden');
                 });
             });
+            
+            document.addEventListener('click', (e) => {
+                if (!searchContainer.contains(e.target)) {
+                    searchContainer.classList.remove('expanded');
+                }
+            });
 
             addPrinterBtn.addEventListener('click', toggleAddMode);
-
             loadPrinters();
         });
     </script>
