@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa Interativo de Impressoras (UI Melhorada)</title>
-    <!-- Substitua o href abaixo pelo caminho para o seu favicon -->
      <link rel="shortcut icon" href="pardinilogo.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -90,13 +89,12 @@
 
         <main>
             <div id="map-container" class="relative w-full max-w-6xl mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-all duration-300" style="aspect-ratio: 1.58;">
-                <img src="planta.jpeg" alt="Planta do escritório" class="w-full h-full object-cover">
+                <img src="planta1.jpg" alt="Planta do escritório" class="w-full h-full object-cover">
                 <div id="map-tooltip"></div>
             </div>
         </main>
     </div>
 
-    <!-- Modals -->
     <div id="details-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 id="modal-title" class="text-2xl font-bold text-[#3D405B] mb-4"></h2><div class="space-y-3 text-gray-700"><p><strong>ID:</strong> <span id="modal-id"></span></p><p><strong>Departamento:</strong> <span id="modal-department"></span></p><p><strong>SELB:</strong> <span id="modal-selb" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Estado:</strong> <span id="modal-status"></span></p></div><div class="mt-6 flex space-x-4"><a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white font-bold rounded-lg hover:bg-[#d46a50] transition-colors">Aceder</a><button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Remover</button></div></div></div>
     <div id="add-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 class="text-2xl font-bold text-[#3D405B] mb-4">Adicionar Nova Impressora</h2><form id="add-printer-form" class="space-y-4"><input type="text" name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-2 border rounded"><input type="text" name="department" placeholder="Departamento" required class="w-full p-2 border rounded"><input type="text" name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-2 border rounded"><input type="text" name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-2 border rounded"><select name="status" required class="w-full p-2 border rounded bg-white"><option value="Online">Online</option><option value="Manutenção">Manutenção</option><option value="Offline">Offline</option></select><button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white font-bold rounded-lg hover:bg-[#2c2e40] transition-colors">Salvar Impressora</button></form></div></div>
     <div id="toast-notification" class="toast"></div>
