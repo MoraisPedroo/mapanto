@@ -1,36 +1,51 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Interativo de Impressoras (UI Melhorada)</title>
-     <link rel="shortcut icon" href="pardinilogo.png" type="image/x-icon">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>MapaNto</title>
+    <link rel="shortcut icon" href="PardiniLogo.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .printer-point {
             position: absolute; width: 24px; height: 24px; border-radius: 9999px;
-            cursor: pointer; transition: all 0.3s ease; display: flex;
+            cursor: pointer; transition: all 0.25s ease; display: flex;
             align-items: center; justify-content: center; transform: translate(-50%, -50%);
+            z-index: 20;
         }
         .printer-point::before {
             content: ''; position: absolute; width: 100%; height: 100%;
             border-radius: 9999px; animation: pulse 2s infinite; background-color: currentColor;
+            opacity: 0.75;
         }
-        .printer-point:hover { transform: translate(-50%, -50%) scale(1.2); }
-        .printer-point-icon { width: 14px; height: 14px; color: white; z-index: 10; }
+        .printer-point:hover { transform: translate(-50%, -50%) scale(1.25); z-index:25; }
+        .printer-point-icon { width: 14px; height: 14px; color: white; z-index: 30; }
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.7); }
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.35); }
             70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 0, 0, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
         }
-        .highlighted::before { animation: highlight-pulse 1s infinite !important; }
+        .highlighted {
+            transform: translate(-50%, -50%) scale(1.6) !important;
+            z-index: 60 !important;
+            transition: transform 0.2s ease;
+        }
+        .highlighted::before { animation: highlight-pulse 1s infinite !important; background-color: rgba(59,130,246,0.95) !important; }
         @keyframes highlight-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8); }
+            70% { box-shadow: 0 0 0 18px rgba(59, 130, 246, 0); }
             100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
+
+        /* hitboxes maiores para facilitar clique */
+        .icon-hitbox {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 8px; border-radius: 9999px; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .modal-backdrop {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5); z-index: 40; display: flex;
@@ -48,38 +63,70 @@
             position: absolute; background-color: #3D405B; color: white;
             padding: 8px 12px; border-radius: 6px; font-size: 0.875rem;
             line-height: 1.4; opacity: 0; visibility: hidden;
-            transition: opacity 0.2s, visibility 0.2s; pointer-events: none;
+            transition: opacity 0.15s, visibility 0.15s; pointer-events: none;
             z-index: 60; transform: translate(-50%, -125%); white-space: nowrap;
         }
         #map-tooltip.show { opacity: 1; visibility: visible; }
+
         #search-input {
             width: 0;
             padding-left: 0;
             padding-right: 0;
             opacity: 0;
-            transition: all 0.4s ease-in-out;
+            transition: all 0.35s ease-in-out;
         }
         #search-container.expanded #search-input {
-            width: 250px;
+            width: 260px;
             opacity: 1;
             padding-left: 0.75rem;
             padding-right: 0.75rem;
         }
+
+        /* painel de resultados */
+        #search-results {
+            position: absolute; right: 0; top: calc(100% + 8px);
+            width: 320px; max-height: 48vh; overflow: auto;
+            background: white; border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.12);
+            z-index: 80; padding: 8px; display: none;
+        }
+        #search-results .result-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+        #search-results .result-item:hover { background: #f3f4f6; }
+
+        /* label de foco */
+        .focus-label {
+            position: absolute; transform: translate(-50%, -120%);
+            background: rgba(255,255,255,0.95); border-radius: 6px; padding: 6px 10px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.15); z-index: 90; font-weight:600;
+            white-space: nowrap;
+        }
+
+        /* transform origin para facilitar centralizar */
+        #map-container { transform-origin: 0 0; transition: transform 450ms cubic-bezier(.2,.9,.3,1); }
     </style>
 </head>
 <body class="bg-[#F3F0EC] text-[#3D405B]">
     <div id="side-actions" class="fixed top-4 right-4 z-30 flex flex-col gap-3">
         <div id="search-container" class="relative flex items-center justify-end bg-white rounded-full shadow-md">
-            <form id="search-form" class="flex items-center">
+            <form id="search-form" class="flex items-center pr-1">
                 <input type="text" id="search-input" placeholder="Buscar por Nome ou SELB..." class="h-12 border-none rounded-full focus:ring-0">
-                <button type="button" id="search-icon-btn" class="w-12 h-12 flex items-center justify-center text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </button>
+                <!-- hitbox maior para o ícone -->
+                <div id="search-hitbox" class="icon-hitbox" title="Buscar (clique)">
+                    <button type="button" id="search-icon-btn" class="w-10 h-10 flex items-center justify-center text-gray-600" aria-label="Buscar">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                </div>
             </form>
+
+            <!-- painel de resultados -->
+            <div id="search-results" aria-hidden="true"></div>
         </div>
-        <button id="add-printer-btn" class="w-12 h-12 flex items-center justify-center bg-[#81B29A] text-white font-semibold rounded-full shadow-md hover:bg-[#6a947e] transition-all duration-300">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-        </button>
+
+        <!-- adiciona hitbox maior para o botão + -->
+        <div id="add-hitbox" class="icon-hitbox" title="Adicionar impressora (clique)">
+            <button id="add-printer-btn" class="w-12 h-12 flex items-center justify-center bg-[#81B29A] text-white font-semibold rounded-full shadow-md hover:bg-[#6a947e] transition-all duration-300" aria-label="Adicionar">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            </button>
+        </div>
     </div>
 
     <div class="container mx-auto p-4 md:p-8">
@@ -88,13 +135,17 @@
         </header>
 
         <main>
-            <div id="map-container" class="relative w-full max-w-6xl mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-all duration-300" style="aspect-ratio: 1.58;">
-                <img src="planta1.jpg" alt="Planta do escritório" class="w-full h-full object-cover">
+            <!-- container maior e responsivo -->
+            <div id="map-container"
+                 class="relative mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-all duration-300"
+                 style="width: min(1400px, 92vw); aspect-ratio: 1.58;">
+                <img id="map-image" src="plantanto.jpg" alt="Planta do escritório" class="w-full h-full object-contain bg-white">
                 <div id="map-tooltip"></div>
             </div>
         </main>
     </div>
 
+    <!-- Modais e Toast -->
     <div id="details-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 id="modal-title" class="text-2xl font-bold text-[#3D405B] mb-4"></h2><div class="space-y-3 text-gray-700"><p><strong>ID:</strong> <span id="modal-id"></span></p><p><strong>Departamento:</strong> <span id="modal-department"></span></p><p><strong>SELB:</strong> <span id="modal-selb" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Estado:</strong> <span id="modal-status"></span></p></div><div class="mt-6 flex space-x-4"><a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white font-bold rounded-lg hover:bg-[#d46a50] transition-colors">Aceder</a><button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Remover</button></div></div></div>
     <div id="add-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 class="text-2xl font-bold text-[#3D405B] mb-4">Adicionar Nova Impressora</h2><form id="add-printer-form" class="space-y-4"><input type="text" name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-2 border rounded"><input type="text" name="department" placeholder="Departamento" required class="w-full p-2 border rounded"><input type="text" name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-2 border rounded"><input type="text" name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-2 border rounded"><select name="status" required class="w-full p-2 border rounded bg-white"><option value="Online">Online</option><option value="Manutenção">Manutenção</option><option value="Offline">Offline</option></select><button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white font-bold rounded-lg hover:bg-[#2c2e40] transition-colors">Salvar Impressora</button></form></div></div>
     <div id="toast-notification" class="toast"></div>
@@ -104,10 +155,13 @@
             const mapContainer = document.getElementById('map-container');
             const tooltip = document.getElementById('map-tooltip');
             const addPrinterBtn = document.getElementById('add-printer-btn');
+            const addHitbox = document.getElementById('add-hitbox');
             const searchContainer = document.getElementById('search-container');
             const searchIconBtn = document.getElementById('search-icon-btn');
+            const searchHitbox = document.getElementById('search-hitbox');
             const searchForm = document.getElementById('search-form');
             const searchInput = document.getElementById('search-input');
+            const searchResultsPanel = document.getElementById('search-results');
             const detailsModal = document.getElementById('details-modal');
             const addModal = document.getElementById('add-modal');
             const addPrinterForm = document.getElementById('add-printer-form');
@@ -117,11 +171,14 @@
             let isAddMode = false;
             let newPrinterCoords = { top: 0, left: 0 };
             let printerToDeleteId = null;
+            let focusResetTimer = null;
+            let transientLabel = null;
 
             const initialPrinters = [
                 { id: 'PRN001', name: 'Recepção P&B', department: 'Recepção', ip: '192.168.1.10', selb: '12345', status: 'Online', pos: { top: '50%', left: '15%' } },
                 { id: 'PRN002', name: 'Marketing Cor', department: 'Marketing', ip: '192.168.1.11', selb: '12346', status: 'Online', pos: { top: '25%', left: '35%' } },
                 { id: 'PRN003', name: 'Vendas P&B', department: 'Vendas', ip: '192.168.1.12', selb: '12347', status: 'Manutenção', pos: { top: '48%', left: '42%' } },
+                // adicione mais se quiser testar muitos pontos
             ];
 
             function showToast(message) {
@@ -139,7 +196,9 @@
             }
 
             function renderAllPrinters() {
+                // remove antigos pontos
                 mapContainer.querySelectorAll('.printer-point').forEach(p => p.remove());
+                // criar pontos novos
                 printerData.forEach(createPrinterPoint);
             }
 
@@ -158,6 +217,7 @@
                 point.style.top = printer.pos.top;
                 point.style.left = printer.pos.left;
                 point.dataset.printerId = printer.id;
+                point.title = `${printer.name} — ${printer.selb}`;
                 point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>`;
                 point.addEventListener('click', () => showDetailsModal(printer));
                 point.addEventListener('mouseenter', () => {
@@ -201,11 +261,12 @@
                     showToast('Clique no mapa para posicionar a nova impressora.');
                 } else {
                     addPrinterBtn.classList.replace('bg-yellow-500', 'bg-[#81B29A]');
-                    addPrinterBtn.classList.replace('hover:bg-yellow-600', 'hover:bg-[#6a947e]');
+                    addPrinterBtn.classList.replace('hover:bg-[#6a947e]', 'hover:bg-yellow-600');
                     mapContainer.classList.remove('add-mode', 'border-yellow-500');
                 }
             }
 
+            // clique no mapa para adicionar
             mapContainer.addEventListener('click', (event) => {
                 if (!isAddMode || event.target.closest('.printer-point')) return;
                 const rect = mapContainer.getBoundingClientRect();
@@ -231,17 +292,33 @@
                 addModal.classList.add('hidden');
                 showToast('Impressora adicionada com sucesso!');
             });
-            
-            searchIconBtn.addEventListener('click', (e) => {
+
+            // tornar hitboxes clicáveis
+            addHitbox.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleAddMode();
+            });
+            // clique no hitbox de busca foca/abre busca
+            searchHitbox.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const isExpanded = searchContainer.classList.contains('expanded');
-                if (isExpanded && searchInput.value) {
+                if (isExpanded && searchInput.value.trim()) {
                     searchForm.requestSubmit();
                 } else {
                     searchContainer.classList.toggle('expanded');
                     if (searchContainer.classList.contains('expanded')) {
                         searchInput.focus();
+                    } else {
+                        hideSearchResults();
                     }
+                }
+            });
+
+            // fechar painel quando clicar fora
+            document.addEventListener('click', (e) => {
+                if (!searchContainer.contains(e.target)) {
+                    searchContainer.classList.remove('expanded');
+                    hideSearchResults();
                 }
             });
 
@@ -249,19 +326,111 @@
                 event.preventDefault();
                 const searchTerm = searchInput.value.toLowerCase().trim();
                 if (!searchTerm) return;
+                // limpar destaque anterior
                 document.querySelectorAll('.printer-point').forEach(p => p.classList.remove('highlighted'));
+                // filtrar
                 const results = printerData.filter(p => p.name.toLowerCase().includes(searchTerm) || p.selb.toLowerCase().includes(searchTerm));
-                if (results.length > 0) {
-                    results.forEach(printer => {
-                        const point = document.querySelector(`.printer-point[data-printer-id="${printer.id}"]`);
-                        if (point) {
-                            point.classList.add('highlighted');
-                            setTimeout(() => { point.classList.remove('highlighted'); }, 5000);
-                        }
-                    });
+                if (results.length === 0) {
+                    showToast('Nenhuma impressora encontrada.');
+                    hideSearchResults();
+                    return;
                 }
-                showToast(results.length > 0 ? `${results.length} impressora(s) encontrada(s)!` : 'Nenhuma impressora encontrada.');
+
+                // mostra painel com resultados
+                populateSearchResults(results);
+
+                // destaca todos
+                results.forEach(printer => {
+                    const point = document.querySelector(`.printer-point[data-printer-id="${printer.id}"]`);
+                    if (point) point.classList.add('highlighted');
+                });
+
+                // foca no primeiro resultado (centraliza + zoom + label)
+                focusPrinter(results[0]);
+
+                showToast(`${results.length} impressora(s) encontrada(s)!`);
             });
+
+            function populateSearchResults(results) {
+                searchResultsPanel.innerHTML = '';
+                results.forEach(r => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.innerHTML = `<div class="text-sm font-semibold">${r.name}</div><div class="text-xs text-gray-500">SELB: ${r.selb} • ${r.department}</div>`;
+                    div.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // fecha painel e foca
+                        hideSearchResults();
+                        focusPrinter(r, true);
+                    });
+                    searchResultsPanel.appendChild(div);
+                });
+                searchResultsPanel.style.display = 'block';
+                searchResultsPanel.setAttribute('aria-hidden', 'false');
+            }
+
+            function hideSearchResults() {
+                searchResultsPanel.style.display = 'none';
+                searchResultsPanel.setAttribute('aria-hidden', 'true');
+            }
+
+            function focusPrinter(printer, openModal=false) {
+                // remove transform reset anterior
+                if (focusResetTimer) {
+                    clearTimeout(focusResetTimer);
+                    focusResetTimer = null;
+                }
+                // remove previous transient label
+                if (transientLabel) {
+                    transientLabel.remove();
+                    transientLabel = null;
+                }
+                const point = document.querySelector(`.printer-point[data-printer-id="${printer.id}"]`);
+                if (!point) return;
+
+                // obter coords do ponto e do viewport
+                const pRect = point.getBoundingClientRect();
+                const mapRect = mapContainer.getBoundingClientRect();
+
+                // centro do ponto
+                const pCenterX = pRect.left + pRect.width / 2;
+                const pCenterY = pRect.top + pRect.height / 2;
+
+                // centro da viewport (janela)
+                const viewCenterX = window.innerWidth / 2;
+                const viewCenterY = window.innerHeight / 2;
+
+                // quanto mover o mapa para colocar o ponto no centro
+                const dx = pCenterX - viewCenterX;
+                const dy = pCenterY - viewCenterY;
+
+                // aplicar transform no container (inverter valores)
+                const scale = 1.25; // ajuste do zoom; mude se quiser menos/more
+                mapContainer.style.transition = 'transform 450ms cubic-bezier(.2,.9,.3,1)';
+                mapContainer.style.transform = `translate(${-dx}px, ${-dy}px) scale(${scale})`;
+
+                // criar label fixo sobre o ponto (posicionado relativamente ao mapa)
+                transientLabel = document.createElement('div');
+                transientLabel.className = 'focus-label';
+                transientLabel.innerHTML = `${printer.name} <span style="font-weight:400; margin-left:6px; font-size:12px; color:#6b7280">(${printer.selb})</span>`;
+                // posicionar pela propriedade top/left do printer.pos
+                transientLabel.style.left = printer.pos.left;
+                transientLabel.style.top = printer.pos.top;
+                mapContainer.appendChild(transientLabel);
+
+               
+                focusResetTimer = setTimeout(() => {
+                    mapContainer.style.transform = '';
+             
+                    document.querySelectorAll('.printer-point').forEach(p => p.classList.remove('highlighted'));
+                    if (transientLabel) { transientLabel.remove(); transientLabel = null; }
+                }, 6500);
+
+                if (openModal) {
+                    
+                    setTimeout(()=> showDetailsModal(printer), 500);
+                }
+            }
 
             deletePrinterBtn.addEventListener('click', () => {
                 printerData = printerData.filter(p => p.id !== printerToDeleteId);
@@ -277,14 +446,9 @@
                     addModal.classList.add('hidden');
                 });
             });
-            
-            document.addEventListener('click', (e) => {
-                if (!searchContainer.contains(e.target)) {
-                    searchContainer.classList.remove('expanded');
-                }
-            });
 
-            addPrinterBtn.addEventListener('click', toggleAddMode);
+
+            addPrinterBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleAddMode(); });
             loadPrinters();
         });
     </script>
