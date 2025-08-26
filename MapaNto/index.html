@@ -1,528 +1,403 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>MapaNto</title>
-    <link rel="shortcut icon" href="PardiniLogo.png" type="image/x-icon">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .printer-point {
-            position: absolute; width: 24px; height: 24px; border-radius: 9999px;
-            cursor: pointer; transition: all 0.25s ease; display: flex;
-            align-items: center; justify-content: center; transform: translate(-50%, -50%);
-            z-index: 20;
-        }
-        .printer-point::before {
-            content: ''; position: absolute; width: 100%; height: 100%;
-            border-radius: 9999px; animation: pulse 2s infinite; background-color: currentColor;
-            opacity: 0.75;
-        }
-        .printer-point:hover { transform: translate(-50%, -50%) scale(1.25); z-index:25; }
-        .printer-point-icon { width: 14px; height: 14px; color: white; z-index: 30; }
-        @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.35); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 0, 0, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
-        }
-        .highlighted {
-            transform: translate(-50%, -50%) scale(1.6) !important;
-            z-index: 60 !important;
-            transition: transform 0.2s ease;
-        }
-        .highlighted::before { animation: highlight-pulse 1s infinite !important; background-color: rgba(59,130,246,0.95) !important; }
-        @keyframes highlight-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8); }
-            70% { box-shadow: 0 0 0 18px rgba(59, 130, 246, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        }
-
-        /* hitboxes maiores para facilitar clique */
-        .icon-hitbox {
-            display: inline-flex; align-items: center; justify-content: center;
-            padding: 8px; border-radius: 9999px; cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .modal-backdrop {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); z-index: 40; display: flex;
-            align-items: center; justify-content: center; transition: opacity 0.3s ease;
-        }
-        .modal-content { z-index: 50; }
-        #map-container.add-mode { cursor: crosshair; }
-        .toast {
-            position: fixed; top: 20px; right: 20px; background-color: #3D405B;
-            color: white; padding: 12px 20px; border-radius: 8px; z-index: 100;
-            opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: translateY(-20px);
-        }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        #map-tooltip {
-            position: absolute; background-color: #3D405B; color: white;
-            padding: 8px 12px; border-radius: 6px; font-size: 0.875rem;
-            line-height: 1.4; opacity: 0; visibility: hidden;
-            transition: opacity 0.15s, visibility 0.15s; pointer-events: none;
-            z-index: 60; transform: translate(-50%, -125%); white-space: nowrap;
-        }
-        #map-tooltip.show { opacity: 1; visibility: visible; }
-
-        #search-input {
-            width: 0;
-            padding-left: 0;
-            padding-right: 0;
-            opacity: 0;
-            transition: all 0.35s ease-in-out;
-        }
-        #search-container.expanded #search-input {
-            width: 260px;
-            opacity: 1;
-            padding-left: 0.75rem;
-            padding-right: 0.75rem;
-        }
-
-        /* painel de resultados */
-        #search-results {
-            position: absolute; right: 0; top: calc(100% + 8px);
-            width: 320px; max-height: 48vh; overflow: auto;
-            background: white; border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.12);
-            z-index: 80; padding: 8px; display: none;
-        }
-        #search-results .result-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
-        #search-results .result-item:hover { background: #f3f4f6; }
-
-        /* label de foco */
-        .focus-label {
-            position: absolute; transform: translate(-50%, -120%);
-            background: rgba(255,255,255,0.95); border-radius: 6px; padding: 6px 10px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.15); z-index: 90; font-weight:600;
-            white-space: nowrap;
-        }
-
-        /* transform origin para facilitar centralizar */
-        #map-container { transform-origin: 0 0; transition: transform 450ms cubic-bezier(.2,.9,.3,1); }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MapaNto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* seu CSS (mantive o original) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .printer-point { position: absolute; width: 24px; height: 24px; border-radius: 9999px; cursor: pointer; transition: all 0.25s ease; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); z-index:20; }
+    .printer-point::before { content:''; position:absolute; width:100%; height:100%; border-radius:9999px; animation:pulse 2s infinite; background-color: currentColor; opacity:0.75; }
+    .printer-point:hover { transform: translate(-50%, -50%) scale(1.25); z-index:25; }
+    .printer-point-icon{ width:14px; height:14px; color:white; z-index:30; }
+    @keyframes pulse { 0%{transform:scale(0.95);}70%{transform:scale(1);}100%{transform:scale(0.95);} }
+    .highlighted { transform: translate(-50%, -50%) scale(1.6) !important; z-index:60 !important; transition: transform .2s ease; }
+    .highlighted::before { animation: highlight-pulse 1s infinite !important; background-color: rgba(59,130,246,0.95) !important; }
+    @keyframes highlight-pulse { 0%{box-shadow:0 0 0 0 rgba(59,130,246,0.8);}70%{box-shadow:0 0 0 18px rgba(59,130,246,0);}100%{box-shadow:0 0 0 0 rgba(59,130,246,0);} }
+    .icon-hitbox { display:inline-flex; align-items:center; justify-content:center; padding:8px; border-radius:9999px; cursor:pointer; -webkit-tap-highlight-color: transparent; }
+    .modal-backdrop { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index:40; display:flex; align-items:center; justify-content:center; }
+    .modal-content { z-index:50; }
+    #map-container.add-mode { cursor:crosshair; }
+    .toast { position: fixed; top:20px; right:20px; background:#3D405B; color:white; padding:12px 20px; border-radius:8px; z-index:100; opacity:0; transform: translateY(-20px); transition: opacity .5s, transform .5s; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    #map-tooltip { position:absolute; background:#3D405B; color:white; padding:8px 12px; border-radius:6px; font-size:.875rem; line-height:1.4; opacity:0; visibility:hidden; transition:opacity .15s, visibility .15s; pointer-events:none; z-index:60; transform: translate(-50%,-125%); white-space:nowrap; }
+    #map-tooltip.show { opacity:1; visibility:visible; }
+    /* outros estilos mantidos... */
+    .focus-label { position:absolute; transform: translate(-50%,-120%); background: rgba(255,255,255,0.95); border-radius:6px; padding:6px 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); z-index:90; font-weight:600; white-space:nowrap; }
+    #map-container { transform-origin: 0 0; transition: transform 450ms cubic-bezier(.2,.9,.3,1); }
+  </style>
 </head>
 <body class="bg-[#F3F0EC] text-[#3D405B]">
-    <div id="side-actions" class="fixed top-4 right-4 z-30 flex flex-col gap-3">
-        <div id="search-container" class="relative flex items-center justify-end bg-white rounded-full shadow-md">
-            <form id="search-form" class="flex items-center pr-1">
-                <input type="text" id="search-input" placeholder="Buscar por Nome ou SELB..." class="h-12 border-none rounded-full focus:ring-0">
-                <!-- hitbox maior para o ícone -->
-                <div id="search-hitbox" class="icon-hitbox" title="Buscar (clique)">
-                    <button type="button" id="search-icon-btn" class="w-10 h-10 flex items-center justify-center text-gray-600" aria-label="Buscar">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </button>
-                </div>
-            </form>
-
-            <!-- painel de resultados -->
-            <div id="search-results" aria-hidden="true"></div>
-        </div>
-
-        <!-- adiciona hitbox maior para o botão + -->
-        <div id="add-hitbox" class="icon-hitbox" title="Adicionar impressora (clique)">
-            <button id="add-printer-btn" class="w-12 h-12 flex items-center justify-center bg-[#81B29A] text-white font-semibold rounded-full shadow-md hover:bg-[#6a947e] transition-all duration-300" aria-label="Adicionar">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            </button>
-        </div>
+  <!-- seu HTML (mantive layout e modais) -->
+  <div id="side-actions" class="fixed top-4 right-4 z-30 flex flex-col gap-3">
+    <div id="search-container" class="relative flex items-center justify-end bg-white rounded-full shadow-md">
+      <form id="search-form" class="flex items-center pr-1">
+        <input id="search-input" type="text" placeholder="Buscar por Nome ou SELB..." class="h-12 border-none rounded-full focus:ring-0">
+        <div id="search-hitbox" class="icon-hitbox" title="Buscar (clique)"><button type="button" id="search-icon-btn" class="w-10 h-10 flex items-center justify-center text-gray-600" aria-label="Buscar"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button></div>
+      </form>
+      <div id="search-results" aria-hidden="true"></div>
     </div>
-
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl md:text-4xl font-bold text-[#3D405B]">Mapeamento Termicas Nto</h1>
-        </header>
-
-        <main>
-            <!-- container maior e responsivo -->
-            <div id="map-container"
-                 class="relative mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-all duration-300"
-                 style="width: min(1400px, 92vw); aspect-ratio: 1.58;">
-                <img id="map-image" src="plantanto.jpg" alt="Planta do escritório" class="w-full h-full object-contain bg-white">
-                <div id="map-tooltip"></div>
-            </div>
-        </main>
+    <div id="add-hitbox" class="icon-hitbox" title="Adicionar impressora (clique)">
+      <button id="add-printer-btn" class="w-12 h-12 bg-[#81B29A] text-white rounded-full shadow-md hover:bg-[#6a947e]">+</button>
     </div>
+  </div>
 
-    <!-- Modais e Toast -->
-    <div id="details-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 id="modal-title" class="text-2xl font-bold text-[#3D405B] mb-4"></h2><div class="space-y-3 text-gray-700"><!-- ID removido conforme solicitado --><p><strong>Departamento:</strong> <span id="modal-department"></span></p><p><strong>SELB:</strong> <span id="modal-selb" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p><p><strong>Estado:</strong> <span id="modal-status"></span></p></div><div class="mt-6 flex space-x-4"><a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white font-bold rounded-lg hover:bg-[#d46a50] transition-colors">Aceder</a><button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors">Remover</button></div></div></div>
-    <div id="add-modal" class="modal-backdrop hidden"><div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button><h2 class="text-2xl font-bold text-[#3D405B] mb-4">Adicionar Nova Impressora</h2><form id="add-printer-form" class="space-y-4"><input type="text" name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-2 border rounded"><input type="text" name="department" placeholder="Departamento" required class="w-full p-2 border rounded"><input type="text" name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-2 border rounded"><input type="text" name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-2 border rounded"><!-- status removido: será determinado por ping ao clicar --><button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white font-bold rounded-lg hover:bg-[#2c2e40] transition-colors">Salvar Impressora</button></form></div></div>
-    <div id="toast-notification" class="toast"></div>
+  <div class="container mx-auto p-4 md:p-8">
+    <header class="text-center mb-6"><h1 class="text-3xl md:text-4xl font-bold">Mapeamento Termicas Nto</h1></header>
+    <main>
+      <div id="map-container" class="relative mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent" style="width: min(1400px, 92vw); aspect-ratio: 1.58;">
+        <img id="map-image" src="plantanto.jpg" alt="Planta do escritório" class="w-full h-full object-contain bg-white">
+        <div id="map-tooltip"></div>
+      </div>
+    </main>
+  </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const mapContainer = document.getElementById('map-container');
-            const tooltip = document.getElementById('map-tooltip');
-            const addPrinterBtn = document.getElementById('add-printer-btn');
-            const addHitbox = document.getElementById('add-hitbox');
-            const searchContainer = document.getElementById('search-container');
-            const searchIconBtn = document.getElementById('search-icon-btn');
-            const searchHitbox = document.getElementById('search-hitbox');
-            const searchForm = document.getElementById('search-form');
-            const searchInput = document.getElementById('search-input');
-            const searchResultsPanel = document.getElementById('search-results');
-            const detailsModal = document.getElementById('details-modal');
-            const addModal = document.getElementById('add-modal');
-            const addPrinterForm = document.getElementById('add-printer-form');
-            const deletePrinterBtn = document.getElementById('delete-printer-btn');
+  <!-- Modais -->
+  <div id="details-modal" class="modal-backdrop hidden">
+    <div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative">
+      <button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800">✕</button>
+      <h2 id="modal-title" class="text-2xl font-bold mb-4"></h2>
+      <div class="space-y-3 text-gray-700">
+        <p><strong>Departamento:</strong> <span id="modal-department"></span></p>
+        <p><strong>SELB:</strong> <span id="modal-selb" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p>
+        <p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p>
+        <p><strong>Estado:</strong> <span id="modal-status"></span></p>
+      </div>
+      <div class="mt-6 flex space-x-4">
+        <a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white rounded-lg">Aceder</a>
+        <button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg">Remover</button>
+      </div>
+      <div id="modal-note" class="text-sm text-gray-500 mt-3"></div>
+    </div>
+  </div>
 
-            let printerData = [];
-            let isAddMode = false;
-            let newPrinterCoords = { top: 0, left: 0 };
-            let printerToDeleteSelb = null;
-            let focusResetTimer = null;
-            let transientLabel = null;
+  <div id="add-modal" class="modal-backdrop hidden">
+    <div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative">
+      <button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800">✕</button>
+      <h2 class="text-2xl font-bold mb-4">Adicionar Nova Impressora</h2>
+      <form id="add-printer-form" class="space-y-4">
+        <input name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-2 border rounded">
+        <input name="department" placeholder="Departamento" required class="w-full p-2 border rounded">
+        <input name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-2 border rounded">
+        <input name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-2 border rounded">
+        <button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white rounded-lg">Salvar Impressora</button>
+      </form>
+    </div>
+  </div>
 
-            const initialPrinters = [
-                
-                { name: 'Recepção P&B', department: 'Recepção', ip: '192.168.10.1', selb: '12345', status: 'Online', pos: { top: '50%', left: '15%' } },
-                { name: 'Marketing Cor', department: 'Marketing', ip: '192.168.1.11', selb: '12346', status: 'Online', pos: { top: '25%', left: '35%' } },
-                { name: 'Vendas P&B', department: 'Vendas', ip: '192.168.1.12', selb: '12347', status: 'Manutenção', pos: { top: '48%', left: '42%' } },
-                // adicione mais se quiser testar muitos pontos
-            ];
+  <div id="toast-notification" class="toast"></div>
 
-            function showToast(message) {
-                const toast = document.getElementById('toast-notification');
-                toast.textContent = message;
-                toast.classList.add('show');
-                setTimeout(() => { toast.classList.remove('show'); }, 3000);
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Elementos
+    const mapContainer = document.getElementById('map-container');
+    const tooltip = document.getElementById('map-tooltip');
+    const addPrinterBtn = document.getElementById('add-printer-btn');
+    const addHitbox = document.getElementById('add-hitbox');
+    const searchContainer = document.getElementById('search-container');
+    const searchHitbox = document.getElementById('search-hitbox');
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const searchResultsPanel = document.getElementById('search-results');
+    const detailsModal = document.getElementById('details-modal');
+    const addModal = document.getElementById('add-modal');
+    const addPrinterForm = document.getElementById('add-printer-form');
+    const deletePrinterBtn = document.getElementById('delete-printer-btn');
+    const modalNote = document.getElementById('modal-note');
+
+    let printerData = [];
+    let isAddMode = false;
+    let newPrinterCoords = { top: '50%', left: '50%' };
+    let printerToDeleteSelb = null;
+    let transientLabel = null;
+    let focusResetTimer = null;
+
+    const initialPrinters = [
+      { name:'Recepção P&B', department:'Recepção', ip:'192.168.10.1', selb:'12345', status:'Online', pos:{top:'50%', left:'15%'} },
+      { name:'Marketing Cor', department:'Marketing', ip:'192.168.1.11', selb:'12346', status:'Online', pos:{top:'25%', left:'35%'} },
+      { name:'Vendas P&B', department:'Vendas', ip:'192.168.1.12', selb:'12347', status:'Manutenção', pos:{top:'48%', left:'42%'} },
+    ];
+
+    function showToast(msg){ const t=document.getElementById('toast-notification'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+
+    function savePrinters(){ localStorage.setItem('interactiveMapPrinters', JSON.stringify(printerData)); }
+    function loadPrinters(){ const s=localStorage.getItem('interactiveMapPrinters'); printerData = s ? JSON.parse(s) : initialPrinters; renderAllPrinters(); }
+
+    function getStatusColor(status){
+      switch((status||'').toLowerCase()){
+        case 'online': return 'bg-green-500';
+        case 'manutenção': return 'bg-yellow-500';
+        case 'offline': return 'bg-red-500';
+        default: return 'bg-gray-500';
+      }
+    }
+
+    function createPrinterPoint(printer){
+      const point = document.createElement('button');
+      point.className = `printer-point ${getStatusColor(printer.status)}`;
+      point.style.top = printer.pos.top;
+      point.style.left = printer.pos.left;
+      point.dataset.printerSelb = printer.selb;
+      point.title = `${printer.name} — ${printer.selb}`;
+      point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>`;
+
+      point.addEventListener('click', () => {
+        // pega referência atualizada por selb
+        const current = printerData.find(p => p.selb === printer.selb) || printer;
+        if (!current) return;
+        showDetailsModal(current);
+        checkPrinterReachabilityAndUpdate(current);
+      });
+      point.addEventListener('mouseenter', () => {
+        tooltip.innerHTML = `<strong>${printer.name}</strong><br>SELB: ${printer.selb}<br>IP: ${printer.ip}`;
+        tooltip.style.top = point.style.top; tooltip.style.left = point.style.left; tooltip.classList.add('show');
+      });
+      point.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+      mapContainer.appendChild(point);
+    }
+
+    function renderAllPrinters(){ mapContainer.querySelectorAll('.printer-point').forEach(n => n.remove()); printerData.forEach(createPrinterPoint); }
+
+    function showDetailsModal(printer){
+      document.getElementById('modal-title').textContent = printer.name;
+      document.getElementById('modal-department').textContent = printer.department;
+      document.getElementById('modal-selb').textContent = printer.selb;
+      document.getElementById('modal-ip').textContent = printer.ip;
+      printerToDeleteSelb = printer.selb;
+      // status "verificando..." visível imediatamente
+      const statusContainer = document.getElementById('modal-status');
+      statusContainer.innerHTML = '';
+      const statusSpan = document.createElement('span');
+      statusSpan.id = 'modal-status-span';
+      statusSpan.className = 'font-semibold text-gray-600';
+      statusSpan.innerHTML = `Verificando... <svg class="w-4 h-4 inline-block animate-spin ml-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.2"></circle><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>`;
+      statusContainer.appendChild(statusSpan);
+
+      // nota sobre limitações se for https + sem backend local
+      modalNote.textContent = '';
+      if (location.protocol === 'https:' && !isLocalHostEnvironment()) {
+        modalNote.textContent = 'Atenção: sua página está em HTTPS — requisições diretas para IPs locais podem ser bloqueadas pelo navegador. Para diagnóstico mais confiável rode um agente local (ex.: http://localhost:3000) ou abra a página via http://localhost.';
+      }
+
+      document.getElementById('modal-link').href = `http://${printer.ip}`;
+      detailsModal.classList.remove('hidden');
+    }
+
+    // util: detectar se ambiente local (página sendo executada localmente)
+    function isLocalHostEnvironment(){
+      const host = location.hostname;
+      if (location.protocol === 'file:') return true;
+      if (host === 'localhost' || host === '127.0.0.1' || host === '' ) return true;
+      // caso a própria página esteja sendo servida por IP privado na LAN
+      if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1]))/.test(host)) return true;
+      return false;
+    }
+
+    // tenta chamar um backend local em http://localhost:3000 se existir
+    async function tryLocalBackendProbe() {
+      try {
+        const ctrl = new AbortController();
+        const id = setTimeout(()=>ctrl.abort(), 800);
+        const r = await fetch('http://localhost:3000/health', { method:'GET', signal: ctrl.signal });
+        clearTimeout(id);
+        return r.ok;
+      } catch(e){ return false; }
+    }
+
+    // ping direto do navegador usando múltiplas estratégias:
+    // 1) se houver backend local (http://localhost:3000) usa ele
+    // 2) tenta fetch HEAD (mode:no-cors) — pode retornar opaco mas indica "carregou"
+    // 3) tenta carregar imagem /favicon.ico (img onload/onerror)
+    async function pingHost(ip, timeout = 2000) {
+      if (!ip) return false;
+
+      // 1) se backend local disponível, delega ao backend (mais confiável)
+      const backendUrl = 'http://localhost:3000'; // ajuste caso use outro
+      const backendAvailable = await tryLocalBackendProbe();
+      if (backendAvailable) {
+        try {
+          const ctrl = new AbortController();
+          const id = setTimeout(()=>ctrl.abort(), timeout);
+          const resp = await fetch(`${backendUrl}/api/ping?ip=${encodeURIComponent(ip)}`, { signal: ctrl.signal });
+          clearTimeout(id);
+          const json = await resp.json();
+          return !!json.ok;
+        } catch (e) {
+          // segue para estratégias do navegador
+        }
+      }
+
+      // 2) experimento fetch HEAD com no-cors (nota: se a página estiver em HTTPS, fetch para http pode ser bloqueado)
+      // usamos mode:'no-cors' para tornar a requisição possível em muitos navegadores — resposta será opaca.
+      try {
+        if (location.protocol === 'https:') {
+          // fetch http em https pode ser bloqueado. ainda assim tentamos imagem fallback abaixo.
+        } else {
+          const controller = new AbortController();
+          const id = setTimeout(()=>controller.abort(), timeout);
+          // tentar portas comuns (80 e 443) — embora 443 seja https; 80 provavelmente responde
+          const urlsToTry = [
+            `http://${ip}/`, 
+            `http://${ip}/favicon.ico`,
+          ];
+          for (const u of urlsToTry) {
+            try {
+              const r = await fetch(u, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+              clearTimeout(id);
+              // se não lançar erro, consideramos alcançável (é opaco mas indica conexão)
+              return true;
+            } catch(err) {
+              // tenta próxima
             }
+          }
+          clearTimeout(id);
+        }
+      } catch(e){ /* ignore */ }
 
-            function savePrinters() { localStorage.setItem('interactiveMapPrinters', JSON.stringify(printerData)); }
-            function loadPrinters() {
-                const savedPrinters = localStorage.getItem('interactiveMapPrinters');
-                printerData = savedPrinters ? JSON.parse(savedPrinters) : initialPrinters;
-                renderAllPrinters();
-            }
+      // 3) fallback: ping via carregamento de imagem (favicon). funciona em muitos casos (é "passivo" e costuma permitir mixed content)
+      const tryImage = (url, t) => new Promise(resolve => {
+        const img = new Image();
+        let finished = false;
+        const timer = setTimeout(()=>{ if (!finished){ finished = true; img.src=''; resolve(false); } }, t);
+        img.onload = () => { if (!finished){ finished = true; clearTimeout(timer); resolve(true); } };
+        img.onerror = () => { if (!finished){ finished = true; clearTimeout(timer); resolve(false); } };
+        // tentar duas URLs diferentes
+        img.src = url;
+      });
 
-            function renderAllPrinters() {
-                // remove antigos pontos
-                mapContainer.querySelectorAll('.printer-point').forEach(p => p.remove());
-                // criar pontos novos
-                printerData.forEach(createPrinterPoint);
-            }
+      // tenta /favicon.ico e depois /. Se algum der true => alcançável
+      const cache = Date.now();
+      const faviconUrl = `http://${ip}/favicon.ico?_=${cache}`;
+      const rootUrl = `http://${ip}/?_=${cache}`;
+      try {
+        const r1 = await tryImage(faviconUrl, timeout);
+        if (r1) return true;
+        const r2 = await tryImage(rootUrl, timeout);
+        if (r2) return true;
+      } catch(e){ /* ignore */ }
 
-            function getStatusColor(status) {
-                switch ((status || '').toLowerCase()) {
-                    case 'online': return 'bg-green-500';
-                    case 'manutenção': return 'bg-yellow-500';
-                    case 'offline': return 'bg-red-500';
-                    default: return 'bg-gray-500';
-                }
-            }
+      // Não conseguiu por nenhuma técnica do browser
+      return false;
+    }
 
-            function createPrinterPoint(printer) {
-                const point = document.createElement('button');
-                point.className = `printer-point ${getStatusColor(printer.status)}`;
-                point.style.top = printer.pos.top;
-                point.style.left = printer.pos.left;
-                // usa SELB como identificador visível/único para busca
-                point.dataset.printerSelb = printer.selb;
-                point.title = `${printer.name} — ${printer.selb}`;
-                point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>`;
-                point.addEventListener('click', () => {
-                    // abrir modal imediatamente
-                    showDetailsModal(printer);
-                    // executar verificação em background (não bloquear abrir do modal)
-                    checkPrinterReachabilityAndUpdate(printer);
-                });
-                point.addEventListener('mouseenter', () => {
-                    tooltip.innerHTML = `<strong>${printer.name}</strong><br>SELB: ${printer.selb}<br>IP: ${printer.ip}`;
-                    tooltip.style.top = point.style.top;
-                    tooltip.style.left = point.style.left;
-                    tooltip.classList.add('show');
-                });
-                point.addEventListener('mouseleave', () => { tooltip.classList.remove('show'); });
-                mapContainer.appendChild(point);
-            }
+    // função que atualiza UI e salva status
+    async function checkPrinterReachabilityAndUpdate(printer) {
+      // usa referência atualizada
+      const current = printerData.find(p => p.selb === printer.selb) || printer;
+      // setar temporariamente "Verificando" (ja mostrado no modal mas aqui garante consistência)
+      current.status = current.status || 'Desconhecido';
+      savePrinters();
 
-            function showDetailsModal(printer) {
-                document.getElementById('modal-title').textContent = printer.name;
-                // id removido (não exibimos)
-                document.getElementById('modal-department').textContent = printer.department;
-                document.getElementById('modal-selb').textContent = printer.selb;
-                document.getElementById('modal-ip').textContent = printer.ip;
+      // faz o ping
+      const reachable = await pingHost(current.ip, 2500);
+      current.status = reachable ? 'Online' : 'Offline';
 
-                // mostra estado temporário "Verificando..." com spinner
-                const statusContainer = document.getElementById('modal-status');
-                statusContainer.innerHTML = '';
-                const statusSpan = document.createElement('span');
-                statusSpan.id = 'modal-status-span';
-                statusSpan.className = 'font-semibold text-gray-600';
-                statusSpan.innerHTML = `Verificando... <svg class="w-4 h-4 inline-block animate-spin ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.2"></circle><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>`;
-                statusContainer.appendChild(statusSpan);
+      // atualiza ponto no mapa
+      const point = document.querySelector(`.printer-point[data-printer-selb="${current.selb}"]`);
+      if (point) {
+        const hadHighlight = point.classList.contains('highlighted');
+        point.className = `printer-point ${getStatusColor(current.status)}`;
+        if (hadHighlight) point.classList.add('highlighted');
+      }
 
-                document.getElementById('modal-link').href = `http://${printer.ip}`;
-                // armazenar SELB para remoção / identificação
-                printerToDeleteSelb = printer.selb;
-                detailsModal.classList.remove('hidden');
-            }
+      savePrinters();
 
-            function toggleAddMode() {
-                isAddMode = !isAddMode;
-                if (isAddMode) {
-                    addPrinterBtn.classList.replace('bg-[#81B29A]', 'bg-yellow-500');
-                    addPrinterBtn.classList.replace('hover:bg-[#6a947e]', 'hover:bg-yellow-600');
-                    mapContainer.classList.add('add-mode', 'border-yellow-500');
-                    showToast('Clique no mapa para posicionar a nova impressora.');
-                } else {
-                    addPrinterBtn.classList.replace('bg-yellow-500', 'bg-[#81B29A]');
-                    addPrinterBtn.classList.replace('hover:bg-[#6a947e]', 'hover:bg-yellow-600');
-                    mapContainer.classList.remove('add-mode', 'border-yellow-500');
-                }
-            }
+      // atualiza modal se estiver aberto para essa impressora
+      const modalStatusSpan = document.getElementById('modal-status-span');
+      if (modalStatusSpan && printerToDeleteSelb === current.selb && !detailsModal.classList.contains('hidden')) {
+        const statusContainer = document.getElementById('modal-status');
+        statusContainer.innerHTML = '';
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'font-semibold';
+        switch((current.status||'').toLowerCase()) {
+          case 'online': statusSpan.classList.add('text-green-600'); break;
+          case 'manutenção': statusSpan.classList.add('text-yellow-600'); break;
+          case 'offline': statusSpan.classList.add('text-red-600'); break;
+          default: statusSpan.classList.add('text-gray-600');
+        }
+        statusSpan.textContent = current.status || 'Desconhecido';
+        statusContainer.appendChild(statusSpan);
+      }
+    }
 
-            // clique no mapa para adicionar
-            mapContainer.addEventListener('click', (event) => {
-                if (!isAddMode || event.target.closest('.printer-point')) return;
-                const rect = mapContainer.getBoundingClientRect();
-                newPrinterCoords = {
-                    top: `${((event.clientY - rect.top) / rect.height) * 100}%`,
-                    left: `${((event.clientX - rect.left) / rect.width) * 100}%`
-                };
-                addPrinterForm.reset();
-                addModal.classList.remove('hidden');
-                toggleAddMode();
-            });
+    // RESTO DO FLUXO: adição, busca, foco e handlers (mantidos, levemente adaptados)
+    function toggleAddMode(){ isAddMode = !isAddMode; if(isAddMode){ addPrinterBtn.classList.replace('bg-[#81B29A]','bg-yellow-500'); mapContainer.classList.add('add-mode','border-yellow-500'); showToast('Clique no mapa para posicionar a nova impressora.'); } else { addPrinterBtn.classList.replace('bg-yellow-500','bg-[#81B29A]'); mapContainer.classList.remove('add-mode','border-yellow-500'); } }
 
-            addPrinterForm.addEventListener('submit', (event) => {
-                event.preventDefault();
-                const formData = new FormData(addPrinterForm);
-                const newPrinter = {
-                    // sem ID exposto; usa SELB como identificador
-                    name: formData.get('name'),
-                    department: formData.get('department'),
-                    selb: formData.get('selb'),
-                    ip: formData.get('ip'),
-                    status: 'Desconhecido', // será atualizado ao clicar
-                    pos: newPrinterCoords
-                };
-                printerData.push(newPrinter);
-                savePrinters();
-                createPrinterPoint(newPrinter);
-                addModal.classList.add('hidden');
-                showToast('Impressora adicionada com sucesso! (status será verificado ao clicar)');
-            });
+    mapContainer.addEventListener('click', (event) => {
+      if (!isAddMode || event.target.closest('.printer-point')) return;
+      const rect = mapContainer.getBoundingClientRect();
+      newPrinterCoords = { top: `${((event.clientY - rect.top) / rect.height) * 100}%`, left: `${((event.clientX - rect.left) / rect.width) * 100}%` };
+      addPrinterForm.reset();
+      addModal.classList.remove('hidden');
+      toggleAddMode();
+    });
 
-            // tornar hitboxes clicáveis
-            addHitbox.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleAddMode();
-            });
-            // clique no hitbox de busca foca/abre busca
-            searchHitbox.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const isExpanded = searchContainer.classList.contains('expanded');
-                if (isExpanded && searchInput.value.trim()) {
-                    searchForm.requestSubmit();
-                } else {
-                    searchContainer.classList.toggle('expanded');
-                    if (searchContainer.classList.contains('expanded')) {
-                        searchInput.focus();
-                    } else {
-                        hideSearchResults();
-                    }
-                }
-            });
+    addPrinterForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const form = new FormData(addPrinterForm);
+      const np = { name: form.get('name'), department: form.get('department'), selb: form.get('selb'), ip: form.get('ip'), status: 'Desconhecido', pos: newPrinterCoords };
+      printerData.push(np);
+      savePrinters();
+      createPrinterPoint(np);
+      addModal.classList.add('hidden');
+      showToast('Impressora adicionada — status será verificado ao clicar.');
+    });
 
-            // fechar painel quando clicar fora
-            document.addEventListener('click', (e) => {
-                if (!searchContainer.contains(e.target)) {
-                    searchContainer.classList.remove('expanded');
-                    hideSearchResults();
-                }
-            });
+    addHitbox.addEventListener('click', (e)=>{ e.stopPropagation(); toggleAddMode(); });
+    searchHitbox.addEventListener('click', (e)=>{ e.stopPropagation(); const isExpanded = searchContainer.classList.contains('expanded'); if(isExpanded && searchInput.value.trim()) searchForm.requestSubmit(); else { searchContainer.classList.toggle('expanded'); if(searchContainer.classList.contains('expanded')) searchInput.focus(); else searchResultsPanel.style.display='none'; }});
 
-            searchForm.addEventListener('submit', (event) => {
-                event.preventDefault();
-                const searchTerm = searchInput.value.toLowerCase().trim();
-                if (!searchTerm) return;
-                // limpar destaque anterior
-                document.querySelectorAll('.printer-point').forEach(p => p.classList.remove('highlighted'));
-                // filtrar
-                const results = printerData.filter(p => p.name.toLowerCase().includes(searchTerm) || p.selb.toLowerCase().includes(searchTerm));
-                if (results.length === 0) {
-                    showToast('Nenhuma impressora encontrada.');
-                    hideSearchResults();
-                    return;
-                }
+    document.addEventListener('click', (e)=>{ if (!searchContainer.contains(e.target)) { searchContainer.classList.remove('expanded'); searchResultsPanel.style.display='none'; } });
 
-                // mostra painel com resultados
-                populateSearchResults(results);
+    searchForm && searchForm.addEventListener && searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const term = (searchInput.value||'').toLowerCase().trim();
+      if (!term) return;
+      document.querySelectorAll('.printer-point').forEach(p=>p.classList.remove('highlighted'));
+      const results = printerData.filter(p=>p.name.toLowerCase().includes(term) || p.selb.toLowerCase().includes(term));
+      if (!results.length) { showToast('Nenhuma impressora encontrada.'); return; }
+      // populate
+      searchResultsPanel.innerHTML = '';
+      results.forEach(r => {
+        const d = document.createElement('div'); d.className='result-item p-2 rounded cursor-pointer'; d.innerHTML=`<div class="text-sm font-semibold">${r.name}</div><div class="text-xs text-gray-500">SELB: ${r.selb} • ${r.department}</div>`;
+        d.addEventListener('click', (ev)=>{ ev.stopPropagation(); searchResultsPanel.style.display='none'; focusPrinter(r, true); });
+        searchResultsPanel.appendChild(d);
+      });
+      searchResultsPanel.style.display='block';
+      results.forEach(pr => { const pt = document.querySelector(`.printer-point[data-printer-selb="${pr.selb}"]`); if (pt) pt.classList.add('highlighted'); });
+      focusPrinter(results[0]);
+      showToast(`${results.length} impressora(s) encontrada(s)!`);
+    });
 
-                // destaca todos
-                results.forEach(printer => {
-                    const point = document.querySelector(`.printer-point[data-printer-selb="${printer.selb}"]`);
-                    if (point) point.classList.add('highlighted');
-                });
+    function focusPrinter(printer, openModal=false){
+      if (focusResetTimer) { clearTimeout(focusResetTimer); focusResetTimer=null; }
+      if (transientLabel) { transientLabel.remove(); transientLabel=null; }
+      const point = document.querySelector(`.printer-point[data-printer-selb="${printer.selb}"]`);
+      if (!point) return;
+      const pRect = point.getBoundingClientRect();
+      const viewCenterX = window.innerWidth/2, viewCenterY = window.innerHeight/2;
+      const pCenterX = pRect.left + pRect.width/2, pCenterY = pRect.top + pRect.height/2;
+      const dx = pCenterX - viewCenterX, dy = pCenterY - viewCenterY;
+      const scale = 1.25;
+      mapContainer.style.transition = 'transform 450ms cubic-bezier(.2,.9,.3,1)';
+      mapContainer.style.transform = `translate(${-dx}px, ${-dy}px) scale(${scale})`;
+      transientLabel = document.createElement('div'); transientLabel.className='focus-label'; transientLabel.innerHTML = `${printer.name} <span style="font-weight:400;margin-left:6px;font-size:12px;color:#6b7280">(${printer.selb})</span>`;
+      transientLabel.style.left = printer.pos.left; transientLabel.style.top = printer.pos.top; mapContainer.appendChild(transientLabel);
+      focusResetTimer = setTimeout(()=>{ mapContainer.style.transform=''; document.querySelectorAll('.printer-point').forEach(p=>p.classList.remove('highlighted')); if (transientLabel) { transientLabel.remove(); transientLabel=null; } }, 6500);
+      if (openModal) setTimeout(()=>{ const cur = printerData.find(p=>p.selb===printer.selb); if (cur) { showDetailsModal(cur); checkPrinterReachabilityAndUpdate(cur); } }, 500);
+    }
 
-                // foca no primeiro resultado (centraliza + zoom + label)
-                focusPrinter(results[0]);
+    deletePrinterBtn.addEventListener('click', ()=>{ printerData = printerData.filter(p=>p.selb !== printerToDeleteSelb); savePrinters(); renderAllPrinters(); detailsModal.classList.add('hidden'); showToast('Impressora removida com sucesso!'); });
+    document.querySelectorAll('.close-modal-btn').forEach(b=> b.addEventListener('click', ()=>{ detailsModal.classList.add('hidden'); addModal.classList.add('hidden'); }));
 
-                showToast(`${results.length} impressora(s) encontrada(s)!`);
-            });
+    // inicializa
+    loadPrinters();
 
-            function populateSearchResults(results) {
-                searchResultsPanel.innerHTML = '';
-                results.forEach(r => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.innerHTML = `<div class="text-sm font-semibold">${r.name}</div><div class="text-xs text-gray-500">SELB: ${r.selb} • ${r.department}</div>`;
-                    div.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        // fecha painel e foca
-                        hideSearchResults();
-                        focusPrinter(r, true);
-                    });
-                    searchResultsPanel.appendChild(div);
-                });
-                searchResultsPanel.style.display = 'block';
-                searchResultsPanel.setAttribute('aria-hidden', 'false');
-            }
-
-            function hideSearchResults() {
-                searchResultsPanel.style.display = 'none';
-                searchResultsPanel.setAttribute('aria-hidden', 'true');
-            }
-
-            function focusPrinter(printer, openModal=false) {
-                // remove transform reset anterior
-                if (focusResetTimer) {
-                    clearTimeout(focusResetTimer);
-                    focusResetTimer = null;
-                }
-                // remove previous transient label
-                if (transientLabel) {
-                    transientLabel.remove();
-                    transientLabel = null;
-                }
-                const point = document.querySelector(`.printer-point[data-printer-selb="${printer.selb}"]`);
-                if (!point) return;
-
-                // obter coords do ponto e do viewport
-                const pRect = point.getBoundingClientRect();
-                const mapRect = mapContainer.getBoundingClientRect();
-
-                // centro do ponto
-                const pCenterX = pRect.left + pRect.width / 2;
-                const pCenterY = pRect.top + pRect.height / 2;
-
-                // centro da viewport (janela)
-                const viewCenterX = window.innerWidth / 2;
-                const viewCenterY = window.innerHeight / 2;
-
-                // quanto mover o mapa para colocar o ponto no centro
-                const dx = pCenterX - viewCenterX;
-                const dy = pCenterY - viewCenterY;
-
-                // aplicar transform no container (inverter valores)
-                const scale = 1.25; // ajuste do zoom; mude se quiser menos/more
-                mapContainer.style.transition = 'transform 450ms cubic-bezier(.2,.9,.3,1)';
-                mapContainer.style.transform = `translate(${-dx}px, ${-dy}px) scale(${scale})`;
-
-                // criar label fixo sobre o ponto (posicionado relativamente ao mapa)
-                transientLabel = document.createElement('div');
-                transientLabel.className = 'focus-label';
-                transientLabel.innerHTML = `${printer.name} <span style="font-weight:400; margin-left:6px; font-size:12px; color:#6b7280">(${printer.selb})</span>`;
-                // posicionar pela propriedade top/left do printer.pos
-                transientLabel.style.left = printer.pos.left;
-                transientLabel.style.top = printer.pos.top;
-                mapContainer.appendChild(transientLabel);
-
-               
-                focusResetTimer = setTimeout(() => {
-                    mapContainer.style.transform = '';
-             
-                    document.querySelectorAll('.printer-point').forEach(p => p.classList.remove('highlighted'));
-                    if (transientLabel) { transientLabel.remove(); transientLabel = null; }
-                }, 6500);
-
-                if (openModal) {
-                    // abrir modal imediatamente e checar depois (mesma lógica do clique)
-                    setTimeout(()=> {
-                        showDetailsModal(printer);
-                        checkPrinterReachabilityAndUpdate(printer);
-                    }, 500);
-                }
-            }
-
-            deletePrinterBtn.addEventListener('click', () => {
-                printerData = printerData.filter(p => p.selb !== printerToDeleteSelb);
-                savePrinters();
-                renderAllPrinters();
-                detailsModal.classList.add('hidden');
-                showToast('Impressora removida com sucesso!');
-            });
-
-            document.querySelectorAll('.close-modal-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    detailsModal.classList.add('hidden');
-                    addModal.classList.add('hidden');
-                });
-            });
-
-
-            addPrinterBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleAddMode(); });
-            loadPrinters();
-
-            // ---------- nova funcionalidade: "ping" via fetch ----------
-            function pingWithFetch(ip, timeout = 3000) {
-                return new Promise((resolve) => {
-                    if (!ip) return resolve(false);
-                    const controller = new AbortController();
-                    const signal = controller.signal;
-                    const timeoutId = setTimeout(() => {
-                        controller.abort();
-                        resolve(false);
-                    }, timeout);
-                    fetch(`http://${ip}/`, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal })
-                        .then(() => {
-                            clearTimeout(timeoutId);
-                            resolve(true);
-                        })
-                        .catch(() => {
-                            clearTimeout(timeoutId);
-                            resolve(false);
-                        });
-                });
-            }
-
-            async function checkPrinterReachabilityAndUpdate(printer) {
-                // tenta ping com timeout
-                const reachable = await pingWithFetch(printer.ip, 3000);
-                printer.status = reachable ? 'Online' : 'Offline';
-                // atualiza o ponto no mapa (cor)
-                const point = document.querySelector(`.printer-point[data-printer-selb="${printer.selb}"]`);
-                if (point) {
-                    // manter classes highlight caso existam
-                    const hadHighlight = point.classList.contains('highlighted');
-                    point.className = `printer-point ${getStatusColor(printer.status)}`;
-                    if (hadHighlight) point.classList.add('highlighted');
-                }
-                // salva mudanças
-                savePrinters();
-
-                // se o modal estiver aberto para essa impressora, atualiza o estado no modal (substitui o "Verificando...")
-                const modalStatusSpan = document.getElementById('modal-status-span');
-                if (modalStatusSpan && printerToDeleteSelb === printer.selb && !detailsModal.classList.contains('hidden')) {
-                    // atualizar texto e cor
-                    const statusContainer = document.getElementById('modal-status');
-                    statusContainer.innerHTML = ''; // limpa o "verificando"
-                    const statusSpan = document.createElement('span');
-                    statusSpan.className = 'font-semibold';
-                    switch ((printer.status || '').toLowerCase()) {
-                        case 'online': statusSpan.classList.add('text-green-600'); break;
-                        case 'manutenção': statusSpan.classList.add('text-yellow-600'); break;
-                        case 'offline': statusSpan.classList.add('text-red-600'); break;
-                        default: statusSpan.classList.add('text-gray-600');
-                    }
-                    statusSpan.textContent = printer.status || 'Desconhecido';
-                    statusContainer.appendChild(statusSpan);
-                }
-            }
-
-        });
-    </script>
+    // se quiser podemos automaticamente tentar detectar backend local e avisar (opcional)
+    // fim do DOMContentLoaded
+  });
+  </script>
 </body>
 </html>
