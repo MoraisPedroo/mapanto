@@ -89,315 +89,307 @@
   </div>
 
   <div id="toast-notification" class="toast"></div>
+<!-- Cole isto no lugar do seu <script> atual (ou substitua todo o bloco <script> ... </script>) -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const mapContainer = document.getElementById('map-container');
+  const tooltip = document.getElementById('map-tooltip');
+  const addPrinterBtn = document.getElementById('add-printer-btn');
+  const addHitbox = document.getElementById('add-hitbox');
+  const searchContainer = document.getElementById('search-container');
+  const searchHitbox = document.getElementById('search-hitbox');
+  const searchForm = document.getElementById('search-form');
+  const searchInput = document.getElementById('search-input');
+  const searchResultsPanel = document.getElementById('search-results');
+  const detailsModal = document.getElementById('details-modal');
+  const addModal = document.getElementById('add-modal');
+  const addPrinterForm = document.getElementById('add-printer-form');
+  const deletePrinterBtn = document.getElementById('delete-printer-btn');
+  const modalNote = document.getElementById('modal-note');
 
-  <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Elementos
-    const mapContainer = document.getElementById('map-container');
-    const tooltip = document.getElementById('map-tooltip');
-    const addPrinterBtn = document.getElementById('add-printer-btn');
-    const addHitbox = document.getElementById('add-hitbox');
-    const searchContainer = document.getElementById('search-container');
-    const searchHitbox = document.getElementById('search-hitbox');
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-    const searchResultsPanel = document.getElementById('search-results');
-    const detailsModal = document.getElementById('details-modal');
-    const addModal = document.getElementById('add-modal');
-    const addPrinterForm = document.getElementById('add-printer-form');
-    const deletePrinterBtn = document.getElementById('delete-printer-btn');
-    const modalNote = document.getElementById('modal-note');
+  let printerData = [];
+  let isAddMode = false;
+  let newPrinterCoords = { top: '50%', left: '50%' };
+  let printerToDeleteSelb = null;
+  let transientLabel = null;
+  let focusResetTimer = null;
 
-    let printerData = [];
-    let isAddMode = false;
-    let newPrinterCoords = { top: '50%', left: '50%' };
-    let printerToDeleteSelb = null;
-    let transientLabel = null;
-    let focusResetTimer = null;
+  const initialPrinters = [
+    { name:'Recepção P&B', department:'Recepção', ip:'192.168.10.1', selb:'12345', status:'Online', pos:{top:'50%', left:'15%'} },
+    { name:'Marketing Cor', department:'Marketing', ip:'192.168.1.11', selb:'12346', status:'Online', pos:{top:'25%', left:'35%'} },
+    { name:'Vendas P&B', department:'Vendas', ip:'192.168.1.12', selb:'12347', status:'Manutenção', pos:{top:'48%', left:'42%'} },
+  ];
 
-    const initialPrinters = [
-      { name:'Recepção P&B', department:'Recepção', ip:'192.168.10.1', selb:'12345', status:'Online', pos:{top:'50%', left:'15%'} },
-      { name:'Marketing Cor', department:'Marketing', ip:'192.168.1.11', selb:'12346', status:'Online', pos:{top:'25%', left:'35%'} },
-      { name:'Vendas P&B', department:'Vendas', ip:'192.168.1.12', selb:'12347', status:'Manutenção', pos:{top:'48%', left:'42%'} },
-    ];
+  function showToast(msg){ const t=document.getElementById('toast-notification'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+  function savePrinters(){ localStorage.setItem('interactiveMapPrinters', JSON.stringify(printerData)); }
+  function loadPrinters(){ const s=localStorage.getItem('interactiveMapPrinters'); printerData = s ? JSON.parse(s) : initialPrinters; renderAllPrinters(); }
+  function getStatusColor(status){
+    switch((status||'').toLowerCase()){
+      case 'online': return 'bg-green-500';
+      case 'manutenção': return 'bg-yellow-500';
+      case 'offline': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  }
 
-    function showToast(msg){ const t=document.getElementById('toast-notification'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+  function createPrinterPoint(printer){
+    const point = document.createElement('button');
+    point.className = `printer-point ${getStatusColor(printer.status)}`;
+    point.style.top = printer.pos.top;
+    point.style.left = printer.pos.left;
+    point.dataset.printerSelb = printer.selb;
+    point.title = `${printer.name} — ${printer.selb}`;
+    point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>`;
 
-    function savePrinters(){ localStorage.setItem('interactiveMapPrinters', JSON.stringify(printerData)); }
-    function loadPrinters(){ const s=localStorage.getItem('interactiveMapPrinters'); printerData = s ? JSON.parse(s) : initialPrinters; renderAllPrinters(); }
+    point.addEventListener('click', () => {
+      const current = printerData.find(p => p.selb === printer.selb) || printer;
+      if (!current) return;
+      showDetailsModal(current);
+      checkPrinterReachabilityAndUpdate(current);
+    });
 
-    function getStatusColor(status){
-      switch((status||'').toLowerCase()){
-        case 'online': return 'bg-green-500';
-        case 'manutenção': return 'bg-yellow-500';
-        case 'offline': return 'bg-red-500';
-        default: return 'bg-gray-500';
+    point.addEventListener('mouseenter', () => {
+      tooltip.innerHTML = `<strong>${printer.name}</strong><br>SELB: ${printer.selb}<br>IP: ${printer.ip}`;
+      tooltip.style.top = point.style.top; tooltip.style.left = point.style.left; tooltip.classList.add('show');
+    });
+    point.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+    mapContainer.appendChild(point);
+  }
+
+  function renderAllPrinters(){ mapContainer.querySelectorAll('.printer-point').forEach(n=>n.remove()); printerData.forEach(createPrinterPoint); }
+
+  function showDetailsModal(printer){
+    document.getElementById('modal-title').textContent = printer.name;
+    document.getElementById('modal-department').textContent = printer.department;
+    document.getElementById('modal-selb').textContent = printer.selb;
+    document.getElementById('modal-ip').textContent = printer.ip;
+    printerToDeleteSelb = printer.selb;
+
+    const statusContainer = document.getElementById('modal-status');
+    statusContainer.innerHTML = '';
+    const statusSpan = document.createElement('span');
+    statusSpan.id = 'modal-status-span';
+    statusSpan.className = 'font-semibold text-gray-600';
+    statusSpan.innerHTML = `Verificando... <svg class="w-4 h-4 inline-block animate-spin ml-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.2"></circle><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>`;
+    statusContainer.appendChild(statusSpan);
+
+    modalNote && (modalNote.textContent = '');
+    if (location.protocol === 'https:' && !isLocalHostEnvironment()) {
+      modalNote && (modalNote.textContent = 'Nota: página em HTTPS pode bloquear requisições HTTP locais. Para checagem mais confiável rode a página via http://localhost ou use um backend/agent local.');
+    }
+
+    document.getElementById('modal-link').href = `http://${printer.ip}`;
+    detailsModal.classList.remove('hidden');
+  }
+
+  function isLocalHostEnvironment(){
+    const host = location.hostname;
+    if (location.protocol === 'file:') return true;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '') return true;
+    if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1]))/.test(host)) return true;
+    return false;
+  }
+
+  // ---------- Estrategia de ping refinada (frontend-only) ----------
+  // tenta em paralelo várias URLs/portas; respeita mixed-content; usa fetch (HEAD no-cors) + image fallback
+  async function pingHost(ip, timeout = 2000) {
+    if (!ip) return false;
+    const cache = Date.now();
+
+    // se página é https, não tentamos http (muito provável bloqueio por mixed content)
+    const allowInsecure = (location.protocol !== 'https:');
+
+    // portas úteis para dispositivos/printers
+    const ports = [443, 80, 9100, 631];
+
+    // paths a tentar
+    const paths = ['/favicon.ico', '/', '/status', '/'];
+    // candidates: protocol + ip + port + path
+    const protocols = allowInsecure ? ['https','http'] : ['https'];
+    // if page is http, prefer http first
+    if (location.protocol === 'http:') protocols.unshift('http');
+
+    const candidates = [];
+    for (const proto of protocols) {
+      for (const port of ports) {
+        for (const p of paths) {
+          // skip impossible combos: proto https + port 9100 (raw) might be okay if service supports it, still try
+          const portPart = (port===80 && proto==='http') || (port===443 && proto==='https') ? '' : `:${port}`;
+          const url = `${proto}://${ip}${portPart}${p}${p.includes('?')?'&':''}?_=${cache}`;
+          candidates.push({ url, proto, port, path: p });
+        }
       }
     }
 
-    function createPrinterPoint(printer){
-      const point = document.createElement('button');
-      point.className = `printer-point ${getStatusColor(printer.status)}`;
-      point.style.top = printer.pos.top;
-      point.style.left = printer.pos.left;
-      point.dataset.printerSelb = printer.selb;
-      point.title = `${printer.name} — ${printer.selb}`;
-      point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>`;
+    // attempt by fetch HEAD (no-cors) -> treat any resolve as success (opaco responses still mean network reachable)
+    const tryFetch = (url, t) => new Promise((resolve, reject) => {
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(()=>{ controller.abort(); reject(new Error('timeout')); }, t);
+        fetch(url, { method:'HEAD', mode:'no-cors', cache:'no-store', signal: controller.signal })
+          .then(() => { clearTimeout(id); resolve(true); })
+          .catch((err) => { clearTimeout(id); reject(err); });
+      } catch(e) { reject(e); }
+    });
 
-      point.addEventListener('click', () => {
-        // pega referência atualizada por selb
-        const current = printerData.find(p => p.selb === printer.selb) || printer;
-        if (!current) return;
-        showDetailsModal(current);
-        checkPrinterReachabilityAndUpdate(current);
-      });
-      point.addEventListener('mouseenter', () => {
-        tooltip.innerHTML = `<strong>${printer.name}</strong><br>SELB: ${printer.selb}<br>IP: ${printer.ip}`;
-        tooltip.style.top = point.style.top; tooltip.style.left = point.style.left; tooltip.classList.add('show');
-      });
-      point.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
-      mapContainer.appendChild(point);
+    // attempt by loading image
+    const tryImage = (url, t) => new Promise((resolve, reject) => {
+      const img = new Image();
+      let finished = false;
+      const id = setTimeout(()=>{ if(!finished){ finished = true; img.src=''; reject(new Error('timeout')); } }, t);
+      img.onload = () => { if(!finished){ finished=true; clearTimeout(id); resolve(true); } };
+      img.onerror = () => { if(!finished){ finished=true; clearTimeout(id); reject(new Error('error')); } };
+      // set src after handlers
+      img.src = url;
+    });
+
+    // build an array of attempts (try fetch first, then image) but run groups in parallel for speed
+    const attempts = candidates.map(c => async () => {
+      // if url uses http but page is https -> skip (mixed content)
+      if (location.protocol === 'https:' && c.url.startsWith('http:')) {
+        throw new Error('mixed-content-blocked');
+      }
+      // prefer fetch on HTTP(S) root paths (fast), then image
+      try {
+        await tryFetch(c.url, timeout);
+        return true;
+      } catch(e) {
+        // fetch failed -> try image
+        try {
+          await tryImage(c.url, Math.max(1200, timeout));
+          return true;
+        } catch(e2) {
+          throw e2;
+        }
+      }
+    });
+
+    // run attempts with Promise.any semantics: succeed fast if any attempt fulfills
+    // to avoid launching dozens of fetches in parallel we will batch them in small groups
+    const batchSize = 6;
+    for (let i=0; i<attempts.length; i+=batchSize) {
+      const batch = attempts.slice(i, i+batchSize).map(fn => fn());
+      try {
+        // any successful -> OK
+        await Promise.any(batch);
+        return true;
+      } catch(e) {
+        // all in batch failed -> continue next batch
+      }
     }
 
-    function renderAllPrinters(){ mapContainer.querySelectorAll('.printer-point').forEach(n => n.remove()); printerData.forEach(createPrinterPoint); }
+    // no candidate succeeded
+    return false;
+  }
 
-    function showDetailsModal(printer){
-      document.getElementById('modal-title').textContent = printer.name;
-      document.getElementById('modal-department').textContent = printer.department;
-      document.getElementById('modal-selb').textContent = printer.selb;
-      document.getElementById('modal-ip').textContent = printer.ip;
-      printerToDeleteSelb = printer.selb;
-      // status "verificando..." visível imediatamente
+  // Atualiza UI e salva
+  async function checkPrinterReachabilityAndUpdate(printer) {
+    const current = printerData.find(p => p.selb === printer.selb) || printer;
+    // Status temporário já mostrado no modal; garantir persistência local
+    current.status = current.status || 'Desconhecido';
+    savePrinters();
+
+    const reachable = await pingHost(current.ip, 2200);
+    current.status = reachable ? 'Online' : 'Offline';
+
+    // atualiza ponto visual
+    const point = document.querySelector(`.printer-point[data-printer-selb="${current.selb}"]`);
+    if (point) {
+      const hadHighlight = point.classList.contains('highlighted');
+      point.className = `printer-point ${getStatusColor(current.status)}`;
+      if (hadHighlight) point.classList.add('highlighted');
+    }
+    savePrinters();
+
+    // atualiza modal se aberto e for mesma impressora
+    const modalStatusSpan = document.getElementById('modal-status-span');
+    if (modalStatusSpan && printerToDeleteSelb === current.selb && !detailsModal.classList.contains('hidden')) {
       const statusContainer = document.getElementById('modal-status');
       statusContainer.innerHTML = '';
       const statusSpan = document.createElement('span');
-      statusSpan.id = 'modal-status-span';
-      statusSpan.className = 'font-semibold text-gray-600';
-      statusSpan.innerHTML = `Verificando... <svg class="w-4 h-4 inline-block animate-spin ml-2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.2"></circle><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path></svg>`;
+      statusSpan.className = 'font-semibold';
+      switch((current.status||'').toLowerCase()){
+        case 'online': statusSpan.classList.add('text-green-600'); break;
+        case 'manutenção': statusSpan.classList.add('text-yellow-600'); break;
+        case 'offline': statusSpan.classList.add('text-red-600'); break;
+        default: statusSpan.classList.add('text-gray-600');
+      }
+      statusSpan.textContent = current.status || 'Desconhecido';
       statusContainer.appendChild(statusSpan);
-
-      // nota sobre limitações se for https + sem backend local
-      modalNote.textContent = '';
-      if (location.protocol === 'https:' && !isLocalHostEnvironment()) {
-        modalNote.textContent = 'Atenção: sua página está em HTTPS — requisições diretas para IPs locais podem ser bloqueadas pelo navegador. Para diagnóstico mais confiável rode um agente local (ex.: http://localhost:3000) ou abra a página via http://localhost.';
-      }
-
-      document.getElementById('modal-link').href = `http://${printer.ip}`;
-      detailsModal.classList.remove('hidden');
     }
+  }
 
-    // util: detectar se ambiente local (página sendo executada localmente)
-    function isLocalHostEnvironment(){
-      const host = location.hostname;
-      if (location.protocol === 'file:') return true;
-      if (host === 'localhost' || host === '127.0.0.1' || host === '' ) return true;
-      // caso a própria página esteja sendo servida por IP privado na LAN
-      if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1]))/.test(host)) return true;
-      return false;
-    }
+  // ---------- Restante do app: add, search, focus, delete (mantidos/adaptados) ----------
+  function toggleAddMode(){ isAddMode = !isAddMode; if(isAddMode){ addPrinterBtn.classList.replace('bg-[#81B29A]','bg-yellow-500'); mapContainer.classList.add('add-mode','border-yellow-500'); showToast('Clique no mapa para posicionar a nova impressora.'); } else { addPrinterBtn.classList.replace('bg-yellow-500','bg-[#81B29A]'); mapContainer.classList.remove('add-mode','border-yellow-500'); } }
 
-    // tenta chamar um backend local em http://localhost:3000 se existir
-    async function tryLocalBackendProbe() {
-      try {
-        const ctrl = new AbortController();
-        const id = setTimeout(()=>ctrl.abort(), 800);
-        const r = await fetch('http://localhost:3000/health', { method:'GET', signal: ctrl.signal });
-        clearTimeout(id);
-        return r.ok;
-      } catch(e){ return false; }
-    }
-
-    // ping direto do navegador usando múltiplas estratégias:
-    // 1) se houver backend local (http://localhost:3000) usa ele
-    // 2) tenta fetch HEAD (mode:no-cors) — pode retornar opaco mas indica "carregou"
-    // 3) tenta carregar imagem /favicon.ico (img onload/onerror)
-    async function pingHost(ip, timeout = 2000) {
-      if (!ip) return false;
-
-      // 1) se backend local disponível, delega ao backend (mais confiável)
-      const backendUrl = 'http://localhost:3000'; // ajuste caso use outro
-      const backendAvailable = await tryLocalBackendProbe();
-      if (backendAvailable) {
-        try {
-          const ctrl = new AbortController();
-          const id = setTimeout(()=>ctrl.abort(), timeout);
-          const resp = await fetch(`${backendUrl}/api/ping?ip=${encodeURIComponent(ip)}`, { signal: ctrl.signal });
-          clearTimeout(id);
-          const json = await resp.json();
-          return !!json.ok;
-        } catch (e) {
-          // segue para estratégias do navegador
-        }
-      }
-
-      // 2) experimento fetch HEAD com no-cors (nota: se a página estiver em HTTPS, fetch para http pode ser bloqueado)
-      // usamos mode:'no-cors' para tornar a requisição possível em muitos navegadores — resposta será opaca.
-      try {
-        if (location.protocol === 'https:') {
-          // fetch http em https pode ser bloqueado. ainda assim tentamos imagem fallback abaixo.
-        } else {
-          const controller = new AbortController();
-          const id = setTimeout(()=>controller.abort(), timeout);
-          // tentar portas comuns (80 e 443) — embora 443 seja https; 80 provavelmente responde
-          const urlsToTry = [
-            `http://${ip}/`, 
-            `http://${ip}/favicon.ico`,
-          ];
-          for (const u of urlsToTry) {
-            try {
-              const r = await fetch(u, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: controller.signal });
-              clearTimeout(id);
-              // se não lançar erro, consideramos alcançável (é opaco mas indica conexão)
-              return true;
-            } catch(err) {
-              // tenta próxima
-            }
-          }
-          clearTimeout(id);
-        }
-      } catch(e){ /* ignore */ }
-
-      // 3) fallback: ping via carregamento de imagem (favicon). funciona em muitos casos (é "passivo" e costuma permitir mixed content)
-      const tryImage = (url, t) => new Promise(resolve => {
-        const img = new Image();
-        let finished = false;
-        const timer = setTimeout(()=>{ if (!finished){ finished = true; img.src=''; resolve(false); } }, t);
-        img.onload = () => { if (!finished){ finished = true; clearTimeout(timer); resolve(true); } };
-        img.onerror = () => { if (!finished){ finished = true; clearTimeout(timer); resolve(false); } };
-        // tentar duas URLs diferentes
-        img.src = url;
-      });
-
-      // tenta /favicon.ico e depois /. Se algum der true => alcançável
-      const cache = Date.now();
-      const faviconUrl = `http://${ip}/favicon.ico?_=${cache}`;
-      const rootUrl = `http://${ip}/?_=${cache}`;
-      try {
-        const r1 = await tryImage(faviconUrl, timeout);
-        if (r1) return true;
-        const r2 = await tryImage(rootUrl, timeout);
-        if (r2) return true;
-      } catch(e){ /* ignore */ }
-
-      // Não conseguiu por nenhuma técnica do browser
-      return false;
-    }
-
-    // função que atualiza UI e salva status
-    async function checkPrinterReachabilityAndUpdate(printer) {
-      // usa referência atualizada
-      const current = printerData.find(p => p.selb === printer.selb) || printer;
-      // setar temporariamente "Verificando" (ja mostrado no modal mas aqui garante consistência)
-      current.status = current.status || 'Desconhecido';
-      savePrinters();
-
-      // faz o ping
-      const reachable = await pingHost(current.ip, 2500);
-      current.status = reachable ? 'Online' : 'Offline';
-
-      // atualiza ponto no mapa
-      const point = document.querySelector(`.printer-point[data-printer-selb="${current.selb}"]`);
-      if (point) {
-        const hadHighlight = point.classList.contains('highlighted');
-        point.className = `printer-point ${getStatusColor(current.status)}`;
-        if (hadHighlight) point.classList.add('highlighted');
-      }
-
-      savePrinters();
-
-      // atualiza modal se estiver aberto para essa impressora
-      const modalStatusSpan = document.getElementById('modal-status-span');
-      if (modalStatusSpan && printerToDeleteSelb === current.selb && !detailsModal.classList.contains('hidden')) {
-        const statusContainer = document.getElementById('modal-status');
-        statusContainer.innerHTML = '';
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'font-semibold';
-        switch((current.status||'').toLowerCase()) {
-          case 'online': statusSpan.classList.add('text-green-600'); break;
-          case 'manutenção': statusSpan.classList.add('text-yellow-600'); break;
-          case 'offline': statusSpan.classList.add('text-red-600'); break;
-          default: statusSpan.classList.add('text-gray-600');
-        }
-        statusSpan.textContent = current.status || 'Desconhecido';
-        statusContainer.appendChild(statusSpan);
-      }
-    }
-
-    // RESTO DO FLUXO: adição, busca, foco e handlers (mantidos, levemente adaptados)
-    function toggleAddMode(){ isAddMode = !isAddMode; if(isAddMode){ addPrinterBtn.classList.replace('bg-[#81B29A]','bg-yellow-500'); mapContainer.classList.add('add-mode','border-yellow-500'); showToast('Clique no mapa para posicionar a nova impressora.'); } else { addPrinterBtn.classList.replace('bg-yellow-500','bg-[#81B29A]'); mapContainer.classList.remove('add-mode','border-yellow-500'); } }
-
-    mapContainer.addEventListener('click', (event) => {
-      if (!isAddMode || event.target.closest('.printer-point')) return;
-      const rect = mapContainer.getBoundingClientRect();
-      newPrinterCoords = { top: `${((event.clientY - rect.top) / rect.height) * 100}%`, left: `${((event.clientX - rect.left) / rect.width) * 100}%` };
-      addPrinterForm.reset();
-      addModal.classList.remove('hidden');
-      toggleAddMode();
-    });
-
-    addPrinterForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const form = new FormData(addPrinterForm);
-      const np = { name: form.get('name'), department: form.get('department'), selb: form.get('selb'), ip: form.get('ip'), status: 'Desconhecido', pos: newPrinterCoords };
-      printerData.push(np);
-      savePrinters();
-      createPrinterPoint(np);
-      addModal.classList.add('hidden');
-      showToast('Impressora adicionada — status será verificado ao clicar.');
-    });
-
-    addHitbox.addEventListener('click', (e)=>{ e.stopPropagation(); toggleAddMode(); });
-    searchHitbox.addEventListener('click', (e)=>{ e.stopPropagation(); const isExpanded = searchContainer.classList.contains('expanded'); if(isExpanded && searchInput.value.trim()) searchForm.requestSubmit(); else { searchContainer.classList.toggle('expanded'); if(searchContainer.classList.contains('expanded')) searchInput.focus(); else searchResultsPanel.style.display='none'; }});
-
-    document.addEventListener('click', (e)=>{ if (!searchContainer.contains(e.target)) { searchContainer.classList.remove('expanded'); searchResultsPanel.style.display='none'; } });
-
-    searchForm && searchForm.addEventListener && searchForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const term = (searchInput.value||'').toLowerCase().trim();
-      if (!term) return;
-      document.querySelectorAll('.printer-point').forEach(p=>p.classList.remove('highlighted'));
-      const results = printerData.filter(p=>p.name.toLowerCase().includes(term) || p.selb.toLowerCase().includes(term));
-      if (!results.length) { showToast('Nenhuma impressora encontrada.'); return; }
-      // populate
-      searchResultsPanel.innerHTML = '';
-      results.forEach(r => {
-        const d = document.createElement('div'); d.className='result-item p-2 rounded cursor-pointer'; d.innerHTML=`<div class="text-sm font-semibold">${r.name}</div><div class="text-xs text-gray-500">SELB: ${r.selb} • ${r.department}</div>`;
-        d.addEventListener('click', (ev)=>{ ev.stopPropagation(); searchResultsPanel.style.display='none'; focusPrinter(r, true); });
-        searchResultsPanel.appendChild(d);
-      });
-      searchResultsPanel.style.display='block';
-      results.forEach(pr => { const pt = document.querySelector(`.printer-point[data-printer-selb="${pr.selb}"]`); if (pt) pt.classList.add('highlighted'); });
-      focusPrinter(results[0]);
-      showToast(`${results.length} impressora(s) encontrada(s)!`);
-    });
-
-    function focusPrinter(printer, openModal=false){
-      if (focusResetTimer) { clearTimeout(focusResetTimer); focusResetTimer=null; }
-      if (transientLabel) { transientLabel.remove(); transientLabel=null; }
-      const point = document.querySelector(`.printer-point[data-printer-selb="${printer.selb}"]`);
-      if (!point) return;
-      const pRect = point.getBoundingClientRect();
-      const viewCenterX = window.innerWidth/2, viewCenterY = window.innerHeight/2;
-      const pCenterX = pRect.left + pRect.width/2, pCenterY = pRect.top + pRect.height/2;
-      const dx = pCenterX - viewCenterX, dy = pCenterY - viewCenterY;
-      const scale = 1.25;
-      mapContainer.style.transition = 'transform 450ms cubic-bezier(.2,.9,.3,1)';
-      mapContainer.style.transform = `translate(${-dx}px, ${-dy}px) scale(${scale})`;
-      transientLabel = document.createElement('div'); transientLabel.className='focus-label'; transientLabel.innerHTML = `${printer.name} <span style="font-weight:400;margin-left:6px;font-size:12px;color:#6b7280">(${printer.selb})</span>`;
-      transientLabel.style.left = printer.pos.left; transientLabel.style.top = printer.pos.top; mapContainer.appendChild(transientLabel);
-      focusResetTimer = setTimeout(()=>{ mapContainer.style.transform=''; document.querySelectorAll('.printer-point').forEach(p=>p.classList.remove('highlighted')); if (transientLabel) { transientLabel.remove(); transientLabel=null; } }, 6500);
-      if (openModal) setTimeout(()=>{ const cur = printerData.find(p=>p.selb===printer.selb); if (cur) { showDetailsModal(cur); checkPrinterReachabilityAndUpdate(cur); } }, 500);
-    }
-
-    deletePrinterBtn.addEventListener('click', ()=>{ printerData = printerData.filter(p=>p.selb !== printerToDeleteSelb); savePrinters(); renderAllPrinters(); detailsModal.classList.add('hidden'); showToast('Impressora removida com sucesso!'); });
-    document.querySelectorAll('.close-modal-btn').forEach(b=> b.addEventListener('click', ()=>{ detailsModal.classList.add('hidden'); addModal.classList.add('hidden'); }));
-
-    // inicializa
-    loadPrinters();
-
-    // se quiser podemos automaticamente tentar detectar backend local e avisar (opcional)
-    // fim do DOMContentLoaded
+  mapContainer.addEventListener('click', (event) => {
+    if (!isAddMode || event.target.closest('.printer-point')) return;
+    const rect = mapContainer.getBoundingClientRect();
+    newPrinterCoords = { top: `${((event.clientY - rect.top) / rect.height) * 100}%`, left: `${((event.clientX - rect.left) / rect.width) * 100}%` };
+    addPrinterForm.reset();
+    addModal.classList.remove('hidden');
+    toggleAddMode();
   });
-  </script>
+
+  addPrinterForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const form = new FormData(addPrinterForm);
+    const np = { name: form.get('name'), department: form.get('department'), selb: form.get('selb'), ip: form.get('ip'), status: 'Desconhecido', pos: newPrinterCoords };
+    printerData.push(np);
+    savePrinters();
+    createPrinterPoint(np);
+    addModal.classList.add('hidden');
+    showToast('Impressora adicionada — status será verificado ao clicar.');
+  });
+
+  addHitbox.addEventListener('click', (e)=>{ e.stopPropagation(); toggleAddMode(); });
+  searchHitbox.addEventListener('click', (e)=>{ e.stopPropagation(); const isExpanded = searchContainer.classList.contains('expanded'); if(isExpanded && searchInput.value.trim()) searchForm.requestSubmit(); else { searchContainer.classList.toggle('expanded'); if(searchContainer.classList.contains('expanded')) searchInput.focus(); else searchResultsPanel.style.display='none'; }});
+
+  document.addEventListener('click', (e)=>{ if (!searchContainer.contains(e.target)) { searchContainer.classList.remove('expanded'); searchResultsPanel.style.display='none'; } });
+
+  searchForm && searchForm.addEventListener && searchForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const term = (searchInput.value||'').toLowerCase().trim();
+    if (!term) return;
+    document.querySelectorAll('.printer-point').forEach(p=>p.classList.remove('highlighted'));
+    const results = printerData.filter(p=>p.name.toLowerCase().includes(term) || p.selb.toLowerCase().includes(term));
+    if (!results.length) { showToast('Nenhuma impressora encontrada.'); return; }
+    searchResultsPanel.innerHTML = '';
+    results.forEach(r => {
+      const d = document.createElement('div'); d.className='result-item p-2 rounded cursor-pointer'; d.innerHTML=`<div class="text-sm font-semibold">${r.name}</div><div class="text-xs text-gray-500">SELB: ${r.selb} • ${r.department}</div>`;
+      d.addEventListener('click', (ev)=>{ ev.stopPropagation(); searchResultsPanel.style.display='none'; focusPrinter(r, true); });
+      searchResultsPanel.appendChild(d);
+    });
+    searchResultsPanel.style.display='block';
+    results.forEach(pr => { const pt = document.querySelector(`.printer-point[data-printer-selb="${pr.selb}"]`); if (pt) pt.classList.add('highlighted'); });
+    focusPrinter(results[0]);
+    showToast(`${results.length} impressora(s) encontrada(s)!`);
+  });
+
+  function focusPrinter(printer, openModal=false){
+    if (focusResetTimer) { clearTimeout(focusResetTimer); focusResetTimer=null; }
+    if (transientLabel) { transientLabel.remove(); transientLabel=null; }
+    const point = document.querySelector(`.printer-point[data-printer-selb="${printer.selb}"]`);
+    if (!point) return;
+    const pRect = point.getBoundingClientRect();
+    const viewCenterX = window.innerWidth/2, viewCenterY = window.innerHeight/2;
+    const pCenterX = pRect.left + pRect.width/2, pCenterY = pRect.top + pRect.height/2;
+    const dx = pCenterX - viewCenterX, dy = pCenterY - viewCenterY;
+    const scale = 1.25;
+    mapContainer.style.transition = 'transform 450ms cubic-bezier(.2,.9,.3,1)';
+    mapContainer.style.transform = `translate(${-dx}px, ${-dy}px) scale(${scale})`;
+    transientLabel = document.createElement('div'); transientLabel.className='focus-label'; transientLabel.innerHTML = `${printer.name} <span style="font-weight:400;margin-left:6px;font-size:12px;color:#6b7280">(${printer.selb})</span>`;
+    transientLabel.style.left = printer.pos.left; transientLabel.style.top = printer.pos.top; mapContainer.appendChild(transientLabel);
+    focusResetTimer = setTimeout(()=>{ mapContainer.style.transform=''; document.querySelectorAll('.printer-point').forEach(p=>p.classList.remove('highlighted')); if (transientLabel){ transientLabel.remove(); transientLabel=null; }}, 6500);
+    if (openModal) setTimeout(()=>{ const cur = printerData.find(p=>p.selb===printer.selb); if (cur) { showDetailsModal(cur); checkPrinterReachabilityAndUpdate(cur); } }, 500);
+  }
+
+  deletePrinterBtn.addEventListener('click', ()=>{ printerData = printerData.filter(p=>p.selb !== printerToDeleteSelb); savePrinters(); renderAllPrinters(); detailsModal.classList.add('hidden'); showToast('Impressora removida com sucesso!'); });
+  document.querySelectorAll('.close-modal-btn').forEach(b=> b.addEventListener('click', ()=>{ detailsModal.classList.add('hidden'); addModal.classList.add('hidden'); }));
+
+  loadPrinters();
+});
+</script>
+
 </body>
 </html>
