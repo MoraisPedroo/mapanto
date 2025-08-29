@@ -143,11 +143,37 @@ document.addEventListener('DOMContentLoaded', () => {
   let repositionTargetSelb = null; // quando setado, clique no mapa reposiciona essa impressora
 
   const initialPrinters = [
-
-  // adicionados
   { name:'CDA00030', department:'Customer Service', ip:'172.19.114.30', selb:'1LG9', status:'Offline', pos:{top:'11.914484746576989%', left:'68.37635869565217%'} },
-  { name:'NCS14224', department:'Customer Service', ip:'172.19.114.224', selb:'OJL4', status:'Desconhecido', pos:{top:'16.814797021378812%', left:'68.51222826086956%'} }
+  { name:'NCS14224', department:'Customer Service', ip:'172.19.114.224', selb:'OJL4', status:'Offline', pos:{top:'16.814797021378812%', left:'68.51222826086956%'} },
+  { name:'MIC11475', department:'Microbiologia Minietiqueta 5x3', ip:'172.19.114.75', selb:'Microbiologia GC420t', status:'Offline', pos:{top:'14.893105933221234%', left:'25.78125%'} },
+  { name:'MIC19194', department:'Microbiologia', ip:'172.19.114.192', selb:'5H04', status:'Offline', pos:{top:'11.145808311313957%', left:'25.8491847826087%'} },
+  { name:'CRP04095', department:'Coprologia Minietiqueta 7x3', ip:'172.19.114.92', selb:'Coprologia GC420t', status:'Offline', pos:{top:'5.476819601249099%', left:'19.870923913043477%'} },
+  { name:'MIC22094', department:'Micobacterias', ip:'172.19.114.220', selb:'DCC8', status:'Offline', pos:{top:'16.04612058611578%', left:'43.51222826086957%'} },
+  { name:'MIC02117', department:'Micobacterias Minietiquetas 5x3', ip:'172.19.114.117', selb:'Micobacterias GC420t', status:'Offline', pos:{top:'17.775642565457602%', left:'41.88179347826087%'} },
+  { name:'MIC02494', department:'Micobacterias', ip:'172.19.114.24', selb:'4Q88', status:'Desconhecido', pos:{top:'7.590679798222435%', left:'45.55027173913043%'} },
+  { name:'CDA10394', department:'CAC', ip:'172.19.141.103', selb:'SPR2', status:'Desconhecido', pos:{top:'77.15589718952678%', left:'83.86548913043478%'} },
+  { name:'CDA13094', department:'CDA', ip:'172.19.141.130', selb:'8KQ6', status:'Desconhecido', pos:{top:'84.07398510689407%', left:'84.9524456521739%'} },
+  { name:'CDA15194', department:'CDA', ip:'172.19.141.151', selb:'ZYG3', status:'Offline', pos:{top:'76.96372808071102%', left:'80.53668478260869%'} },
+  { name:'CDA12194', department:'CDA', ip:'172.19.141.121', selb:'8KP6', status:'Desconhecido', pos:{top:'86.57218352149893%', left:'83.72961956521739%'} },
+  { name:'CDA10094', department:'CDA', ip:'172.19.141.100', selb:'PGL6', status:'Offline', pos:{top:'86.57218352149893%', left:'78.90625%'} },
+  { name:'CDA14494', department:'CDA', ip:'172.19.141.144', selb:'3V12', status:'Offline', pos:{top:'74.27336055729042%', left:'80.60461956521739%'} },
+  { name:'LVR19394', department:'Linha Verde', ip:'172.19.114.193', selb:'6PL1', status:'Desconhecido', pos:{top:'83.20922411722316%', left:'90.72690217391305%'} },
+  { name:'TOX11425', department:'Toxicologia', ip:'172.19.114.25', selb:'0AFP', status:'Offline', pos:{top:'54.672111458083116%', left:'50.71331521739131%'} },
+  { name:'TOX11429', department:'Toxicologia', ip:'172.19.114.29', selb:'NDK3', status:'Desconhecido', pos:{top:'53.13475858755705%', left:'49.62635869565217%'} },
+  { name:'HEM14094', department:'Hematologia', ip:'172.19.114.140', selb:'0K65', status:'Desconhecido', pos:{top:'48.13836175834735%', left:'56.01222826086957%'} },
+  { name:'AML22194', department:'Linha Amarela', ip:'172.19.114.221', selb:'7OL4', status:'Offline', pos:{top:'67.93177996637041%', left:'69.7350543478261%'} },
+  { name:'CITO00898', department:'Citometria', ip:'172.19.114.98', selb:'7ZK8', status:'Desconhecido', pos:{top:'41.02810473216431%', left:'73.33559782608695%'} },
+  { name:'AIM00817', department:'Linha Vermelha', ip:'172.19.114.172', selb:'3L29', status:'Offline', pos:{top:'46.985347105452796%', left:'82.30298913043478%'} },
+  { name:'MIC07894', department:'Microbiologia', ip:'172.19.114.78', selb:'16VX', status:'Offline', pos:{top:'14.989190487629115%', left:'27.47961956521739%'} },
+  { name:'MIC24094', department:'Microbiologia', ip:'172.19.114.240', selb:'5G78', status:'Offline', pos:{top:'12.49099207302426%', left:'27.4116847826087%'} },
+  { name:'MIC19245', department:'Microbiologia', ip:'172.19.114.245', selb:'YEJ4', status:'Offline', pos:{top:'9.320201777564256%', left:'27.34375%'} },
+  { name:'MIC02094', department:'Microbiologia', ip:'172.19.114.20', selb:'MIC02094 ZT230', status:'Offline', pos:{top:'14.989190487629115%', left:'28.634510869565215%'} },
+  { name:'MIC23994', department:'Microbiologia', ip:'172.19.114.239', selb:'4R83', status:'Offline', pos:{top:'13.067499399471535%', left:'28.566576086956523%'} },
+  { name:'MIC02194', department:'Microbiologia', ip:'172.19.114.21', selb:'MIC02194 ZT230', status:'Offline', pos:{top:'11.241892865721836%', left:'28.634510869565215%'} },
+  { name:'MIC02118', department:'Microbiologia', ip:'172.19.114.118', selb:'MIC02118 ZT230', status:'Offline', pos:{top:'9.320201777564256%', left:'28.634510869565215%'} },
+  { name:'MIC23894', department:'Microbiologia', ip:'172.19.114.238', selb:'5G71', status:'Desconhecido', pos:{top:'9.320201777564256%', left:'30.197010869565215%'} }
 ];
+
 
 
   function showToast(msg){ const t=document.getElementById('toast-notification'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
