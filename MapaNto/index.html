@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MapaNto</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- FAVICON: coloque seu arquivo aqui com nome favicon.png na mesma pasta -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta name="theme-color" content="#F3F0EC">
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; }
@@ -25,7 +31,7 @@
     #map-tooltip { position:absolute; background:#3D405B; color:white; padding:8px 12px; border-radius:6px; font-size:.875rem; line-height:1.4; opacity:0; visibility:hidden; transition:opacity .15s, visibility .15s; pointer-events:none; z-index:60; transform: translate(-50%,-125%); white-space:nowrap; }
     #map-tooltip.show { opacity:1; visibility:visible; }
     .focus-label { position:absolute; transform: translate(-50%,-120%); background: rgba(255,255,255,0.95); border-radius:6px; padding:6px 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); z-index:90; font-weight:600; white-space:nowrap; }
-    #map-container { transform-origin: 0 0; transition: transform 450ms cubic-bezier(.2,.9,.3,1); }
+    #map-inner { position: relative; width: 100%; height: 100%; transform-origin: 0 0; transition: transform 450ms cubic-bezier(.2,.9,.3,1); }
     #search-input { transition: width 300ms ease-in-out; width: 0; padding-left: 0; padding-right: 0; }
     #search-container.expanded #search-input { width: 250px; padding-left: 1rem; padding-right: 0.5rem; }
     #search-results { position: absolute; top: 110%; right: 0; width: 300px; background: white; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; max-height: 300px; overflow-y: auto; display: none; }
@@ -56,14 +62,15 @@
     </header>
     <main>
       <div id="map-container" 
-     class="relative mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-colors duration-300" 
-     style="width: min(3840px, 92vw); aspect-ratio: 3840 / 2715;">
-  <img id="map-image" src="plantanto.jpg" alt="Planta do escritório" 
-       class="w-full h-full object-contain bg-white" 
-       onerror="this.onerror=null;this.src='https://placehold.co/3840x2715/ffffff/cccccc?text=Planta+Indispon%C3%ADvel';">
-  <div id="map-tooltip"></div>
-</div>
-
+           class="relative mx-auto shadow-2xl rounded-lg overflow-hidden border-4 border-transparent transition-colors duration-300" 
+           style="width: min(3840px, 92vw); aspect-ratio: 3840 / 2715;">
+        <div id="map-inner" class="relative w-full h-full">
+          <img id="map-image" src="plantanto.jpg" alt="Planta do escritório" 
+               class="w-full h-full object-contain bg-white" 
+               onerror="this.onerror=null;this.src='https://placehold.co/3840x2715/ffffff/cccccc?text=Planta+Indispon%C3%ADvel';">
+        </div>
+        <div id="map-tooltip"></div>
+      </div>
     </main>
   </div>
 
@@ -104,6 +111,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const mapContainer = document.getElementById('map-container');
+  const mapInner = document.getElementById('map-inner');
   const tooltip = document.getElementById('map-tooltip');
   const addPrinterBtn = document.getElementById('add-printer-btn');
   const addHitbox = document.getElementById('add-hitbox');
@@ -148,12 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
     point.className = `printer-point ${getStatusColor(printer.status)}`;
     point.style.top = printer.pos.top;
     point.style.left = printer.pos.left;
-    // dado de referência no próprio elemento para sempre localizar corretamente
     point.dataset.printerSelb = printer.selb;
     point.setAttribute('aria-label', `Impressora ${printer.name}`);
     point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>`;
 
-    // Clique: busca o SELB diretamente do botão clicado (evita closure/valor antigo)
     point.addEventListener('click', (e) => {
       const selb = e.currentTarget.dataset.printerSelb;
       const current = printerData.find(p => p.selb === selb);
@@ -162,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
       checkPrinterReachabilityAndUpdate(current);
     });
 
-    // Tooltip: também busca o registro atual via data-attribute para evitar dados stale
     point.addEventListener('mouseenter', (e) => {
       const selb = e.currentTarget.dataset.printerSelb;
       const current = printerData.find(p => p.selb === selb) || printer;
@@ -175,10 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     point.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
 
-    mapContainer.appendChild(point);
+    mapInner.appendChild(point);
   }
 
-  function renderAllPrinters(){ mapContainer.querySelectorAll('.printer-point').forEach(n=>n.remove()); printerData.forEach(createPrinterPoint); }
+  function renderAllPrinters(){ mapInner.querySelectorAll('.printer-point').forEach(n=>n.remove()); printerData.forEach(createPrinterPoint); }
 
   function showDetailsModal(printer){
     document.getElementById('modal-title').textContent = printer.name;
@@ -314,7 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Verifica SELB único
     if (printerData.some(p => p.selb === selb)) {
       showToast('Erro: já existe uma impressora com esse SELB.');
       return;
@@ -388,6 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchResultsPanel.style.display = 'block';
   }
 
+  // --- CORREÇÃO: função de foco/zoom centralizada ---
   function focusPrinter(printer, openModal = false) {
     if (focusResetTimer) clearTimeout(focusResetTimer);
     if (transientLabel) transientLabel.remove();
@@ -400,22 +405,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const pRect = point.getBoundingClientRect();
     const mapRect = mapContainer.getBoundingClientRect();
-    
-    const scale = 1.4;
-    const dx = mapRect.width / 2 - (pRect.left - mapRect.left + pRect.width / 2);
-    const dy = mapRect.height / 2 - (pRect.top - mapRect.top + pRect.height / 2);
 
-    mapContainer.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+    // centro do ponto relativo ao container (em px)
+    const pCenterX = (pRect.left - mapRect.left) + pRect.width / 2;
+    const pCenterY = (pRect.top - mapRect.top) + pRect.height / 2;
+
+    const scale = 1.4;
+
+    // depois de escalar, queremos que (pCenterX * scale, pCenterY * scale) fique no centro do container
+    let dx = mapRect.width / 2 - pCenterX * scale;
+    let dy = mapRect.height / 2 - pCenterY * scale;
+
+    // Opcional: limita a tradução para não mostrar áreas vazias além da imagem (ajuste margem se quiser)
+    // Calcula tamanho do mapa escalado (aprox. pelo container)
+    const scaledWidth = mapRect.width * scale;
+    const scaledHeight = mapRect.height * scale;
+    // limites (em px) para dx/dy: evitar mover o mapa para revelar fundo vazio
+    const maxDx = 0;
+    const minDx = mapRect.width - scaledWidth;
+    const maxDy = 0;
+    const minDy = mapRect.height - scaledHeight;
+    dx = Math.min(maxDx, Math.max(minDx, dx));
+    dy = Math.min(maxDy, Math.max(minDy, dy));
+
+    mapInner.style.transform = `scale(${scale}) translate(${dx}px, ${dy}px)`;
+
+    // Scroll para centralizar o container no viewport
+    const containerRectAfter = mapContainer.getBoundingClientRect();
+    const scrollLeft = window.scrollX + containerRectAfter.left - (window.innerWidth - containerRectAfter.width) / 2;
+    const scrollTop = window.scrollY + containerRectAfter.top - (window.innerHeight - containerRectAfter.height) / 2;
+    window.scrollTo({ left: scrollLeft, top: scrollTop, behavior: 'smooth' });
 
     transientLabel = document.createElement('div');
     transientLabel.className = 'focus-label';
     transientLabel.innerHTML = `${printer.name} <span class="font-normal text-xs text-gray-500 ml-2">(${printer.selb})</span>`;
-    transientLabel.style.left = printer.pos.left;
-    transientLabel.style.top = printer.pos.top;
+    transientLabel.style.left = `50%`;
+    transientLabel.style.top = `50%`;
+    transientLabel.style.transform = `translate(-50%, calc(-100% - 20px))`;
     mapContainer.appendChild(transientLabel);
 
     focusResetTimer = setTimeout(() => {
-        mapContainer.style.transform = '';
+        mapInner.style.transform = '';
         point.classList.remove('highlighted');
         if (transientLabel) {
             transientLabel.remove();
@@ -424,13 +454,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 6500);
 
     if (openModal) {
-        setTimeout(() => {
-            const current = printerData.find(p => p.selb === printer.selb);
-            if (current) {
-                showDetailsModal(current);
-                checkPrinterReachabilityAndUpdate(current);
-            }
-        }, 500);
+      setTimeout(() => {
+          const current = printerData.find(p => p.selb === printer.selb);
+          if (current) {
+              showDetailsModal(current);
+              checkPrinterReachabilityAndUpdate(current);
+          }
+      }, 500);
     }
   }
 
