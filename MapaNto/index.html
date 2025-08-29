@@ -5,46 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MapaNto</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 
-    Chosen Palette: Warm Neutrals with Functional Accents. 
-    - Background: #F3F0EC (Creme)
-    - Text/Primary UI: #3D405B (Azul Ardósia)
-    - Accent (Add): #81B29A (Verde Sálvia)
-    - Accent (Access): #E07A5F (Terracota)
-    - Status (Online): Verde
-    - Status (Maintenance): Amarelo
-    - Status (Offline): Vermelho
-  -->
-  <!-- 
-    Application Structure Plan: The application uses a single-view, map-centric dashboard structure. The primary interaction model is direct manipulation of the map and its points. This was chosen for its immediacy and intuitiveness for a spatial visualization task. Key interactions are:
-    1.  **Explore:** Users can visually scan the map. Hovering over a point reveals a tooltip with essential info (Name, SELB, IP).
-    2.  **Inspect:** Clicking a point opens a detailed modal with all data and actions (Access Web UI, Remove). This triggers an asynchronous status check, providing real-time feedback.
-    3.  **Search:** A non-intrusive search bar allows users to find printers by name or SELB. A successful search highlights matches and automatically "pans and zooms" the map to the first result, visually guiding the user.
-    4.  **Add:** A dedicated "Add Mode" provides clear visual cues (border color, cursor change) for placing a new printer, followed by a modal for data entry.
-    This structure avoids complex navigation, keeping the user focused on the map as the central source of truth and interaction.
-  -->
-  <!-- 
-    Visualization & Content Choices:
-    - Report Info: Printer locations and details.
-      - Goal: Organize/Inform.
-      - Viz/Method: Interactive points on a static map image.
-      - Interaction: Hover for tooltip, click for modal.
-      - Justification: Direct spatial representation is the most intuitive way to show physical locations.
-      - Library/Method: Vanilla JS, DOM manipulation.
-    - Report Info: Printer network status (Online/Offline).
-      - Goal: Inform.
-      - Viz/Method: Color-coded status indicators (green/yellow/red/gray) on points and in the modal.
-      - Interaction: Status is checked on-demand when a user clicks a printer.
-      - Justification: Color is a universally understood and quick way to convey status. On-demand checking prevents overwhelming the network and provides the most current information when it's needed.
-      - Library/Method: Custom async JS function (`pingHost`) using fetch and Image object heuristics.
-    - Report Info: Searching for a specific printer.
-      - Goal: Organize/Inform.
-      - Viz/Method: A search input that filters data and highlights results on the map.
-      - Interaction: User types and submits; the map animates to the result.
-      - Justification: Provides a fast path to finding a specific device without manual scanning, enhancing usability on dense maps.
-      - Library/Method: Vanilla JS filtering an array and applying CSS transforms.
-  -->
-  <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; }
@@ -118,7 +78,7 @@
         <p><strong>Estado:</strong> <span id="modal-status"></span></p>
       </div>
       <div class="mt-6 flex space-x-4">
-        <a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white rounded-lg hover:bg-opacity-90 transition-colors">Aceder à Web UI</a>
+        <a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white rounded-lg hover:bg-opacity-90 transition-colors">Acessar IP</a>
         <button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Remover</button>
       </div>
       <div id="modal-note" class="text-xs text-gray-500 mt-4 text-center"></div>
@@ -188,26 +148,33 @@ document.addEventListener('DOMContentLoaded', () => {
     point.className = `printer-point ${getStatusColor(printer.status)}`;
     point.style.top = printer.pos.top;
     point.style.left = printer.pos.left;
+    // dado de referência no próprio elemento para sempre localizar corretamente
     point.dataset.printerSelb = printer.selb;
     point.setAttribute('aria-label', `Impressora ${printer.name}`);
     point.innerHTML = `<svg class="printer-point-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>`;
 
-    point.addEventListener('click', () => {
-      const current = printerData.find(p => p.selb === printer.selb);
+    // Clique: busca o SELB diretamente do botão clicado (evita closure/valor antigo)
+    point.addEventListener('click', (e) => {
+      const selb = e.currentTarget.dataset.printerSelb;
+      const current = printerData.find(p => p.selb === selb);
       if (!current) return;
       showDetailsModal(current);
       checkPrinterReachabilityAndUpdate(current);
     });
 
-    point.addEventListener('mouseenter', () => {
-      tooltip.innerHTML = `<strong>${printer.name}</strong><br>SELB: ${printer.selb}`;
-      const pointRect = point.getBoundingClientRect();
+    // Tooltip: também busca o registro atual via data-attribute para evitar dados stale
+    point.addEventListener('mouseenter', (e) => {
+      const selb = e.currentTarget.dataset.printerSelb;
+      const current = printerData.find(p => p.selb === selb) || printer;
+      tooltip.innerHTML = `<strong>${current.name}</strong><br>SELB: ${current.selb}`;
+      const pointRect = e.currentTarget.getBoundingClientRect();
       const containerRect = mapContainer.getBoundingClientRect();
       tooltip.style.top = `${pointRect.top - containerRect.top}px`; 
       tooltip.style.left = `${pointRect.left - containerRect.left}px`;
       tooltip.classList.add('show');
     });
     point.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+
     mapContainer.appendChild(point);
   }
 
@@ -337,11 +304,27 @@ document.addEventListener('DOMContentLoaded', () => {
   addPrinterForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const formData = new FormData(addPrinterForm);
+    const name = (formData.get('name') || '').trim();
+    const department = (formData.get('department') || '').trim();
+    const selb = (formData.get('selb') || '').trim();
+    const ip = (formData.get('ip') || '').trim();
+
+    if (!name || !department || !selb || !ip) {
+      showToast('Preencha todos os campos.');
+      return;
+    }
+
+    // Verifica SELB único
+    if (printerData.some(p => p.selb === selb)) {
+      showToast('Erro: já existe uma impressora com esse SELB.');
+      return;
+    }
+
     const newPrinter = {
-        name: formData.get('name'),
-        department: formData.get('department'),
-        selb: formData.get('selb'),
-        ip: formData.get('ip'),
+        name,
+        department,
+        selb,
+        ip,
         status: 'Desconhecido',
         pos: newPrinterCoords
     };
