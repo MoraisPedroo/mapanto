@@ -84,9 +84,11 @@
         <p><strong>Endereço IP:</strong> <span id="modal-ip" class="font-mono bg-gray-100 px-2 py-1 rounded"></span></p>
         <p><strong>Estado:</strong> <span id="modal-status"></span></p>
       </div>
-      <div class="mt-6 flex space-x-4">
-        <a id="modal-link" href="#" target="_blank" class="flex-1 text-center px-6 py-3 bg-[#E07A5F] text-white rounded-lg hover:bg-opacity-90 transition-colors">Acessar IP</a>
-        <button id="delete-printer-btn" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Remover</button>
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <a id="modal-link" href="#" target="_blank" class="col-span-1 text-center px-4 py-3 bg-[#E07A5F] text-white rounded-lg hover:bg-opacity-90 transition-colors">Acessar IP</a>
+        <button id="edit-printer-btn" class="col-span-1 px-4 py-3 bg-[#3D405B] text-white rounded-lg hover:bg-opacity-90 transition-colors">Editar</button>
+        <button id="reposition-printer-btn" class="col-span-1 px-4 py-3 bg-yellow-500 text-white rounded-lg hover:bg-opacity-90 transition-colors">Reposicionar</button>
+        <button id="delete-printer-btn" class="col-span-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Remover</button>
       </div>
       <div id="modal-note" class="text-xs text-gray-500 mt-4 text-center"></div>
     </div>
@@ -95,13 +97,15 @@
   <div id="add-modal" class="modal-backdrop hidden">
     <div class="modal-content bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl p-6 relative">
       <button class="close-modal-btn absolute top-4 right-4 text-gray-500 hover:text-gray-800">✕</button>
-      <h2 class="text-2xl font-bold mb-4">Adicionar Nova Impressora</h2>
+      <h2 id="add-modal-title" class="text-2xl font-bold mb-4">Adicionar Nova Impressora</h2>
       <form id="add-printer-form" class="space-y-4">
         <input name="name" placeholder="Nome (Ex: Recepção P&B)" required class="w-full p-3 border rounded focus:ring-2 focus:ring-[#3D405B]">
         <input name="department" placeholder="Departamento" required class="w-full p-3 border rounded focus:ring-2 focus:ring-[#3D405B]">
         <input name="selb" placeholder="SELB (Ex: 98765)" required class="w-full p-3 border rounded focus:ring-2 focus:ring-[#3D405B]">
         <input name="ip" placeholder="Endereço IP (Ex: 192.168.1.25)" required class="w-full p-3 border rounded focus:ring-2 focus:ring-[#3D405B]">
-        <button type="submit" class="w-full px-6 py-3 bg-[#3D405B] text-white rounded-lg hover:bg-opacity-90 transition-colors">Salvar Impressora</button>
+        <div class="flex items-center justify-between gap-2">
+          <button type="submit" id="add-submit-btn" class="flex-1 px-6 py-3 bg-[#3D405B] text-white rounded-lg hover:bg-opacity-90 transition-colors">Salvar Impressora</button>
+        </div>
       </form>
     </div>
   </div>
@@ -125,6 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const addPrinterForm = document.getElementById('add-printer-form');
   const deletePrinterBtn = document.getElementById('delete-printer-btn');
   const modalNote = document.getElementById('modal-note');
+  const editPrinterBtn = document.getElementById('edit-printer-btn');
+  const repositionPrinterBtn = document.getElementById('reposition-printer-btn');
+  const addModalTitle = document.getElementById('add-modal-title');
+  const addSubmitBtn = document.getElementById('add-submit-btn');
 
   let printerData = [];
   let isAddMode = false;
@@ -132,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let printerToDeleteSelb = null;
   let transientLabel = null;
   let focusResetTimer = null;
+  let repositionTargetSelb = null; // quando setado, clique no mapa reposiciona essa impressora
 
   const initialPrinters = [
 
@@ -297,13 +306,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   mapContainer.addEventListener('click', (event) => {
-    if (!isAddMode || event.target.closest('.printer-point')) return;
+    if (event.target.closest('.printer-point')) return;
     const rect = mapContainer.getBoundingClientRect();
-    newPrinterCoords = { 
+    const coords = { 
         top: `${((event.clientY - rect.top) / rect.height) * 100}%`, 
         left: `${((event.clientX - rect.left) / rect.width) * 100}%` 
     };
+
+    // Se estivermos reposicionando uma impressora existente
+    if (isAddMode && repositionTargetSelb) {
+      const p = printerData.find(p => p.selb === repositionTargetSelb);
+      if (p) {
+        p.pos = coords;
+        savePrinters();
+        renderAllPrinters();
+        showToast('Posição da impressora atualizada.');
+      }
+      repositionTargetSelb = null;
+      toggleAddMode();
+      return;
+    }
+
+    // Fluxo normal de adição
+    if (!isAddMode) return;
+    newPrinterCoords = coords;
     addPrinterForm.reset();
+    // garantir que o formulário esteja no modo de adicionar (não editar)
+    delete addModal.dataset.editingSelb;
+    addModalTitle.textContent = 'Adicionar Nova Impressora';
+    addSubmitBtn.textContent = 'Salvar Impressora';
     addModal.classList.remove('hidden');
     toggleAddMode();
   });
@@ -321,6 +352,38 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const editingSelb = addModal.dataset.editingSelb;
+    if (editingSelb) {
+      // editar impressora existente
+      const idx = printerData.findIndex(p => p.selb === editingSelb);
+      if (idx === -1) {
+        showToast('Erro: impressora não encontrada.');
+        addModal.classList.add('hidden');
+        return;
+      }
+      // se alterou o SELB para um que já existe em outra impressora
+      if (selb !== editingSelb && printerData.some(p => p.selb === selb)) {
+        showToast('Erro: já existe outra impressora com esse SELB.');
+        return;
+      }
+
+      printerData[idx].name = name;
+      printerData[idx].department = department;
+      printerData[idx].selb = selb;
+      printerData[idx].ip = ip;
+      // posição já estava em newPrinterCoords caso o usuário tenha escolhido um novo local via reposicionar
+      printerData[idx].pos = newPrinterCoords || printerData[idx].pos;
+
+      savePrinters();
+      renderAllPrinters();
+      addModal.classList.add('hidden');
+      detailsModal.classList.add('hidden');
+      delete addModal.dataset.editingSelb;
+      showToast('Impressora atualizada com sucesso.');
+      return;
+    }
+
+    // adicionar nova impressora
     if (printerData.some(p => p.selb === selb)) {
       showToast('Erro: já existe uma impressora com esse SELB.');
       return;
@@ -474,9 +537,42 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Impressora removida com sucesso!');
   });
 
+  editPrinterBtn.addEventListener('click', () => {
+    const selb = printerToDeleteSelb;
+    const p = printerData.find(x => x.selb === selb);
+    if (!p) return showToast('Impressora não encontrada.');
+
+    // abrir modal de adicionar já preenchido no modo edição
+    addPrinterForm.reset();
+    addPrinterForm.querySelector('[name="name"]').value = p.name;
+    addPrinterForm.querySelector('[name="department"]').value = p.department;
+    addPrinterForm.querySelector('[name="selb"]').value = p.selb;
+    addPrinterForm.querySelector('[name="ip"]').value = p.ip;
+    newPrinterCoords = p.pos || newPrinterCoords;
+
+    addModal.dataset.editingSelb = p.selb;
+    addModalTitle.textContent = 'Editar Impressora';
+    addSubmitBtn.textContent = 'Salvar Alterações';
+    detailsModal.classList.add('hidden');
+    addModal.classList.remove('hidden');
+  });
+
+  repositionPrinterBtn.addEventListener('click', () => {
+    const selb = printerToDeleteSelb;
+    const p = printerData.find(x => x.selb === selb);
+    if (!p) return showToast('Impressora não encontrada.');
+    repositionTargetSelb = selb;
+    // entrar em modo de adicionar para capturar o clique no mapa
+    if (!isAddMode) toggleAddMode();
+    detailsModal.classList.add('hidden');
+    showToast('Clique no mapa para reposicionar a impressora selecionada.');
+  });
+
   document.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', () => {
     detailsModal.classList.add('hidden');
     addModal.classList.add('hidden');
+    // cancelar edição caso estava em modo edição
+    delete addModal.dataset.editingSelb;
   }));
   
   document.addEventListener('keydown', (e) => {
@@ -488,6 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
               searchContainer.classList.remove('expanded');
               searchInput.value = '';
           }
+          delete addModal.dataset.editingSelb;
       }
   });
 
